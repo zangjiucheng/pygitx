@@ -1,0 +1,11 @@
+/target
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+*.so
+*.pyd
+*.dll
+*.dylib
+*.egg-info
+dist/
+build/

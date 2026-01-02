@@ -1,0 +1,22 @@
+[package]
+name = "histgit"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "Cross-platform Git history access via Rust with a Python API"
+
+[lib]
+name = "histgit"
+crate-type = ["cdylib", "lib"]
+
+[features]
+default = []
+python-extension = ["pyo3/extension-module"]
+python-tests = []
+
+[dependencies]
+pyo3 = { version = "0.27", features = ["abi3-py39"] }
+git2 = { version = "0.20", default-features = false, features = ["vendored-libgit2"] }
+
+[dev-dependencies]
+tempfile = "3.10"
