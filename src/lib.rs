@@ -1,4 +1,4 @@
-use git2::{Commit, ErrorCode, Repository};
+use git2::{Commit, ErrorClass, ErrorCode, Repository};
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
@@ -83,7 +83,9 @@ impl PyRepo {
             .revwalk()
             .map_err(|err| py_git_err("failed to create revwalk", err))?;
         if let Err(err) = revwalk.push_head() {
-            if err.code() == ErrorCode::UnbornBranch || err.code() == ErrorCode::NotFound {
+            if matches!(err.code(), ErrorCode::UnbornBranch | ErrorCode::NotFound)
+                || err.class() == ErrorClass::Reference
+            {
                 return Ok(vec![]);
             }
             return Err(py_git_err("failed to start revwalk from HEAD", err));
@@ -135,12 +137,14 @@ fn py_git_err(context: &str, err: git2::Error) -> PyErr {
 mod tests {
     use super::*;
     use git2::Signature;
+    use pyo3::Python;
     use std::fs;
     use std::path::Path;
     use tempfile::tempdir;
 
     #[test]
     fn empty_repo_has_no_head_or_commits() {
+        init_python();
         let dir = tempdir().unwrap();
         let repo = Repository::init(dir.path()).unwrap();
         let py_repo = PyRepo { repo };
@@ -151,6 +155,7 @@ mod tests {
 
     #[test]
     fn repo_with_commit_reports_head() {
+        init_python();
         let dir = tempdir().unwrap();
         let repo = Repository::init(dir.path()).unwrap();
         create_commit(&repo);
@@ -161,6 +166,14 @@ mod tests {
         let commits = py_repo.list_commits(Some(10)).unwrap();
         assert_eq!(commits.len(), 1);
         assert_eq!(head.unwrap().id, commits[0].id);
+    }
+
+    fn init_python() {
+        // Initialize the embedded Python interpreter once for PyO3-bound types used in tests.
+        static INIT: std::sync::Once = std::sync::Once::new();
+        INIT.call_once(|| {
+            Python::initialize();
+        });
     }
 
     fn create_commit(repo: &Repository) {
