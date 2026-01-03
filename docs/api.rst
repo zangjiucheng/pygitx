@@ -63,6 +63,10 @@ Classes
 
       Amend HEAD with a new author (and committer if ``update_committer``). ``commit_id`` must resolve to HEAD.
 
+   .. py:method:: rebase_branch(branch: str, onto: str) -> list[tuple[str, str]]
+
+      Rebase a local branch onto a new base (pick-only). Returns ``[(old_id, new_id)]`` mapping in replay order.
+
 Functions
 ---------
 

@@ -26,6 +26,8 @@ class Repo:
         """Amend HEAD with a new message (rewrites history). commit_id must resolve to HEAD."""
     def rewrite_author(self, commit_id: str, new_name: str, new_email: str, update_committer: bool = True) -> CommitInfo:
         """Amend HEAD with new author (and committer if update_committer). commit_id must resolve to HEAD."""
+    def rebase_branch(self, branch: str, onto: str) -> list[tuple[str, str]]:
+        """Rebase a local branch onto a new base (pick-only). Returns [(old_id, new_id)] mapping."""
 
 def open_repo(path: PathLikeStr) -> Repo:
     """Open a git repository at path (str or os.PathLike)."""

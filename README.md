@@ -8,6 +8,7 @@ Cross-platform Git history access implemented in Rust with a Python API via PyO3
 - `Repo.list_commits(max=None)` to iterate commits from HEAD (newest first).
 - `Repo.change_commit_message(commit_id, new_message)` to amend the HEAD commit message.
 - `Repo.rewrite_author(commit_id, new_name, new_email, update_committer=True)` to rewrite HEAD author (optionally committer).
+- `Repo.rebase_branch(branch, onto)` to replay a branch onto a new base (pick-only).
 - Vendored libgit2 for predictable, cross-platform builds.
 
 ## Quick start (editable install)
@@ -45,9 +46,13 @@ if head:
 if head:
     updated = repo.rewrite_author(head.id, "New Name", "new@example.com")
     print("Amended author:", updated.id, updated.author, updated.email)
+
+# Rebase a branch onto a new base (pick-only)
+updated_commits = repo.rebase_branch("feature", "main")
+print("Rebased commits:", updated_commits)
 ```
 
-Example script: `examples/list_commits.py`.
+Example script: `examples/demo.py` (see `--help` for options to generate a demo repo, list commits, amend/rewrite, or rebase).
 
 ## Development
 - Default tests (no Python runtime needed): `cargo test`
@@ -59,4 +64,5 @@ Example script: `examples/list_commits.py`.
 - Built on `git2` (libgit2) for speed and portability.
 - Amending commit messages rewrites history; avoid on published branches unless you know the consequences.
 - Rewriting author/committer also rewrites history and is currently limited to HEAD; rewriting older commits requires a rebase-like flow.
+- Rebase is non-interactive (pick-only) and rewrites branch history; conflicts will abort with an error.
 - Future roadmap: commit message edits, author rewrites, squash/rebase helpers, filtering.

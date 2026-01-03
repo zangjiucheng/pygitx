@@ -13,7 +13,7 @@ Install the extension (editable):
    pip install -U pip maturin
    maturin develop --features python-extension
 
-Open a repository and read commits:
+Open a repository and read commits (or use ``examples/demo.py generate`` to create a sample repo):
 
 .. code-block:: python
 
@@ -46,3 +46,22 @@ replace it with a new commit:
 
 **Warning:** These operations rewrite history. Avoid using them on published
 branches unless you are prepared to force-push and coordinate with consumers.
+
+Rebasing a branch
+-----------------
+
+Replay a branch on top of a new base (pick-only):
+
+.. code-block:: python
+
+   updated_commits = repo.rebase_branch("feature", "main")
+   for old, new in updated_commits:
+       print(f"{old[:7]} -> {new[:7]}")
+
+Conflicts will abort the rebase and raise an error; resolve manually and retry
+if needed.
+
+Example script
+--------------
+
+`examples/demo.py` bundles the above: generate a repo, list commits, amend messages, rewrite author, and rebase (run with ``--help``).

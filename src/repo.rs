@@ -1,6 +1,6 @@
 use crate::errors::py_git_err;
 use crate::types::PyCommitInfo;
-use git2::{ErrorClass, ErrorCode, Repository, Signature};
+use git2::{BranchType, ErrorClass, ErrorCode, Oid, Repository, Signature};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyString;
@@ -211,6 +211,142 @@ impl PyRepo {
             .map_err(|err| py_git_err("failed to load amended commit", err))?;
 
         Ok(PyCommitInfo::from_commit(&amended))
+    }
+
+    /// Rebase a branch onto a new base (non-interactive, pick-only).
+    ///
+    /// Args:
+    ///     branch (str): Local branch name (e.g., "feature").
+    ///     onto (str): Commit-ish to rebase onto (e.g., "main" or a commit id).
+    ///
+    /// Returns:
+    ///     list[tuple[str, str]]: Mapping of old commit ids to new commit ids in replay order.
+    ///
+    /// Notes:
+    ///     - If conflicts occur, the rebase aborts and an error is raised.
+    ///     - This rewrites history; branch ref is updated to the new tip.
+    #[pyo3(text_signature = "($self, branch, onto)")]
+    pub fn rebase_branch(&mut self, branch: &str, onto: &str) -> PyResult<Vec<(String, String)>> {
+        let branch_ref = self
+            .repo
+            .find_branch(branch, BranchType::Local)
+            .map_err(|err| PyValueError::new_err(format!("unknown branch '{}': {}", branch, err)))?;
+        let branch_name = branch_ref
+            .get()
+            .name()
+            .ok_or_else(|| PyValueError::new_err("branch name is not valid utf-8"))?
+            .to_string();
+        let branch_tip = branch_ref
+            .get()
+            .target()
+            .ok_or_else(|| PyValueError::new_err("branch has no target oid"))?;
+
+        let onto_obj = self
+            .repo
+            .revparse_single(onto)
+            .map_err(|err| PyValueError::new_err(format!("invalid onto '{}': {}", onto, err)))?;
+        let onto_commit = onto_obj
+            .peel_to_commit()
+            .map_err(|err| PyValueError::new_err(format!("onto '{}' is not a commit: {}", onto, err)))?;
+
+        let head_points_to_branch = self
+            .repo
+            .head()
+            .ok()
+            .and_then(|h| h.name().map(|name| name == branch_name))
+            .unwrap_or(false);
+
+        // Collect commits reachable from branch but not from onto (oldest first).
+        let mut revwalk = self
+            .repo
+            .revwalk()
+            .map_err(|err| py_git_err("failed to start revwalk for rebase", err))?;
+        revwalk
+            .push(branch_tip)
+            .map_err(|err| py_git_err("failed to push branch tip for rebase", err))?;
+        revwalk
+            .hide(onto_commit.id())
+            .map_err(|err| py_git_err("failed to hide onto for rebase", err))?;
+        let _ = revwalk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::REVERSE);
+
+        let mut to_replay = Vec::new();
+        for oid_result in revwalk {
+            let oid = oid_result.map_err(|err| py_git_err("failed to read commit during rebase walk", err))?;
+            to_replay.push(oid);
+        }
+
+        let mut mappings = Vec::new();
+        let mut current_tip = self
+            .repo
+            .find_commit(onto_commit.id())
+            .map_err(|err| py_git_err("failed to load onto commit", err))?;
+
+        for oid in to_replay {
+            let commit = self
+                .repo
+                .find_commit(oid)
+                .map_err(|err| py_git_err("failed to load commit during rebase", err))?;
+            let parent = commit
+                .parent(0)
+                .map_err(|err| py_git_err("failed to load commit parent during rebase", err))?;
+
+            let ancestor_tree = parent.tree().map_err(|err| py_git_err("failed to load ancestor tree", err))?;
+            let current_tree = current_tip.tree().map_err(|err| py_git_err("failed to load current tree", err))?;
+            let commit_tree = commit.tree().map_err(|err| py_git_err("failed to load commit tree", err))?;
+
+            let mut idx = self
+                .repo
+                .merge_trees(&ancestor_tree, &current_tree, &commit_tree, None)
+                .map_err(|err| py_git_err("failed to merge trees during rebase", err))?;
+            if idx.has_conflicts() {
+                return Err(py_git_err(
+                    "conflicts detected during rebase; rebase aborted",
+                    git2::Error::from_str("merge conflicts"),
+                ));
+            }
+
+            let tree_oid = idx
+                .write_tree_to(&self.repo)
+                .map_err(|err| py_git_err("failed to write tree during rebase", err))?;
+            let tree = self
+                .repo
+                .find_tree(tree_oid)
+                .map_err(|err| py_git_err("failed to load rewritten tree", err))?;
+
+            let new_oid = self
+                .repo
+                .commit(
+                    None,
+                    &commit.author(),
+                    &commit.committer(),
+                    commit.message().unwrap_or("rebase: pick"),
+                    &tree,
+                    &[&current_tip],
+                )
+                .map_err(|err| py_git_err("failed to create commit during rebase", err))?;
+
+            mappings.push((commit.id().to_string(), new_oid.to_string()));
+            current_tip = self
+                .repo
+                .find_commit(new_oid)
+                .map_err(|err| py_git_err("failed to load rewritten commit", err))?;
+        }
+
+        if let Some((_, new_oid_str)) = mappings.last() {
+            let new_oid = Oid::from_str(new_oid_str).map_err(|_| PyValueError::new_err("invalid new oid produced"))?;
+            let mut reference = branch_ref.into_reference();
+            reference
+                .set_target(new_oid, "rebase: update branch")
+                .map_err(|err| py_git_err("failed to update branch after rebase", err))?;
+
+            if head_points_to_branch {
+                self.repo
+                    .set_head(&branch_name)
+                    .map_err(|err| py_git_err("failed to update HEAD after rebase", err))?;
+            }
+        }
+
+        Ok(mappings)
     }
 }
 

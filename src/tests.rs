@@ -1,5 +1,5 @@
 use crate::repo::{open_repo, PyRepo};
-use git2::{Commit, ErrorCode, Oid, Repository, Signature};
+use git2::{build::CheckoutBuilder, BranchType, Commit, Oid, Repository, Signature};
 use pyo3::exceptions::PyValueError;
 use pyo3::types::PyString;
 use pyo3::types::PyAnyMethods;
@@ -25,7 +25,7 @@ fn repo_with_commit_reports_head() {
     init_python();
     let dir = tempdir().unwrap();
     let repo = Repository::init(dir.path()).unwrap();
-    create_commit_with_message(&repo, "initial commit", "hello");
+    create_commit_on_ref(&repo, "HEAD", &[], "initial commit", "hello");
     let py_repo = PyRepo { repo };
 
     let head = py_repo.head().unwrap();
@@ -40,7 +40,7 @@ fn open_repo_accepts_pathlike() {
     init_python();
     let dir = tempdir().unwrap();
     let repo = Repository::init(dir.path()).unwrap();
-    create_commit_with_message(&repo, "initial commit", "hello");
+    create_commit_on_ref(&repo, "HEAD", &[], "initial commit", "hello");
 
     Python::with_gil(|py| {
         let pathlib = py.import("pathlib").unwrap();
@@ -56,7 +56,7 @@ fn open_repo_expands_tilde() {
     let home = tempdir().unwrap();
     let repo_path = home.path().join("repo");
     let repo = Repository::init(&repo_path).unwrap();
-    create_commit_with_message(&repo, "initial commit", "hello");
+    create_commit_on_ref(&repo, "HEAD", &[], "initial commit", "hello");
 
     let prev_home = env::var_os("HOME");
     let home_str = home.path().to_str().expect("home path should be valid unicode").to_owned();
@@ -92,7 +92,7 @@ fn change_commit_message_updates_head_commit() {
     init_python();
     let dir = tempdir().unwrap();
     let repo = Repository::init(dir.path()).unwrap();
-    create_commit_with_message(&repo, "initial commit", "hello");
+    create_commit_on_ref(&repo, "HEAD", &[], "initial commit", "hello");
     let mut py_repo = PyRepo { repo };
 
     let original = py_repo.head().unwrap().unwrap();
@@ -116,10 +116,10 @@ fn change_commit_message_rejects_non_head() {
     init_python();
     let dir = tempdir().unwrap();
     let repo = Repository::init(dir.path()).unwrap();
-    create_commit_with_message(&repo, "first", "hello");
+    let first = create_commit_on_ref(&repo, "HEAD", &[], "first", "hello");
 
     // Second commit modifies content so there is something to commit.
-    create_commit_with_message(&repo, "second", "hello again");
+    create_commit_on_ref(&repo, "HEAD", &[first], "second", "hello again");
     let mut py_repo = PyRepo { repo };
 
     let commits = py_repo.list_commits(Some(10)).unwrap();
@@ -137,7 +137,7 @@ fn rewrite_author_updates_head() {
     init_python();
     let dir = tempdir().unwrap();
     let repo = Repository::init(dir.path()).unwrap();
-    create_commit_with_message(&repo, "initial commit", "hello");
+    create_commit_on_ref(&repo, "HEAD", &[], "initial commit", "hello");
     let mut py_repo = PyRepo { repo };
 
     let original = py_repo.head().unwrap().unwrap();
@@ -158,8 +158,8 @@ fn rewrite_author_rejects_non_head() {
     init_python();
     let dir = tempdir().unwrap();
     let repo = Repository::init(dir.path()).unwrap();
-    create_commit_with_message(&repo, "first", "hello");
-    create_commit_with_message(&repo, "second", "hello again");
+    let first = create_commit_on_ref(&repo, "HEAD", &[], "first", "hello");
+    create_commit_on_ref(&repo, "HEAD", &[first], "second", "hello again");
     let mut py_repo = PyRepo { repo };
 
     let commits = py_repo.list_commits(Some(10)).unwrap();
@@ -172,6 +172,45 @@ fn rewrite_author_rejects_non_head() {
     }
 }
 
+#[test]
+fn rebase_branch_replays_commits() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+
+    // Base commit on main.
+    let base1 = create_commit_on_ref_with_path(&repo, "HEAD", &[], "file.txt", "base1", "base1");
+
+    // Create feature branch from base1.
+    {
+        let base_commit = repo.find_commit(base1).unwrap();
+        repo.branch("feature", &base_commit, false).unwrap();
+    }
+
+    // Commit on feature (divergent).
+    let feature1 = create_commit_on_ref_with_path(&repo, "refs/heads/feature", &[base1], "feature.txt", "feature1", "feature1");
+
+    // New base on main after branch.
+    let base2 = create_commit_on_ref_with_path(&repo, "HEAD", &[base1], "file.txt", "base2", "base2");
+
+    // Ensure working tree matches base branch before rebase.
+    let mut checkout = CheckoutBuilder::new();
+    checkout.force().remove_untracked(true);
+    repo.checkout_head(Some(&mut checkout)).unwrap();
+
+    let mut py_repo = PyRepo { repo };
+    let mappings = py_repo
+        .rebase_branch("feature", &base2.to_string())
+        .expect("rebase should succeed");
+    assert_eq!(mappings.len(), 1);
+    assert_eq!(mappings[0].0, feature1.to_string());
+
+    // Feature branch should now point to the new tip.
+    let feature_branch = py_repo.repo.find_branch("feature", BranchType::Local).unwrap();
+    let feature_head = feature_branch.into_reference().target().unwrap();
+    assert_eq!(feature_head.to_string(), mappings[0].1);
+}
+
 fn init_python() {
     // Initialize the embedded Python interpreter once for PyO3-bound types used in tests.
     static INIT: std::sync::Once = std::sync::Once::new();
@@ -180,29 +219,35 @@ fn init_python() {
     });
 }
 
-fn create_commit_with_message(repo: &Repository, message: &str, content: &str) {
+fn create_commit_on_ref(repo: &Repository, reference: &str, parent_oids: &[Oid], message: &str, content: &str) -> Oid {
+    create_commit_on_ref_with_path(repo, reference, parent_oids, "file.txt", message, content)
+}
+
+fn create_commit_on_ref_with_path(
+    repo: &Repository,
+    reference: &str,
+    parent_oids: &[Oid],
+    path: &str,
+    message: &str,
+    content: &str,
+) -> Oid {
     let sig = Signature::now("HistGit", "histgit@example.com").unwrap();
     let workdir = repo.workdir().expect("repo should have workdir");
-    let file_path = workdir.join("file.txt");
+    let file_path = workdir.join(path);
     fs::write(&file_path, content).unwrap();
 
     let mut index = repo.index().unwrap();
-    index.add_path(Path::new("file.txt")).unwrap();
+    index.add_path(Path::new(path)).unwrap();
     index.write().unwrap();
     let tree_id = index.write_tree().unwrap();
     let tree = repo.find_tree(tree_id).unwrap();
 
-    let parents: Vec<Commit<'_>> = match repo.head() {
-        Ok(head_ref) => match head_ref.peel_to_commit() {
-            Ok(commit) => vec![commit],
-            Err(err) if err.code() == ErrorCode::UnbornBranch || err.code() == ErrorCode::NotFound => vec![],
-            Err(err) => panic!("failed to resolve HEAD: {err}"),
-        },
-        Err(err) if err.code() == ErrorCode::UnbornBranch || err.code() == ErrorCode::NotFound => vec![],
-        Err(err) => panic!("failed to read HEAD: {err}"),
-    };
+    let parents: Vec<Commit<'_>> = parent_oids
+        .iter()
+        .map(|oid| repo.find_commit(*oid).unwrap())
+        .collect();
     let parent_refs: Vec<&Commit> = parents.iter().collect();
 
-    repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &parent_refs)
-        .unwrap();
+    repo.commit(Some(reference), &sig, &sig, message, &tree, &parent_refs)
+        .unwrap()
 }
