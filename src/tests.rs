@@ -42,7 +42,7 @@ fn open_repo_accepts_pathlike() {
     let repo = Repository::init(dir.path()).unwrap();
     create_commit_on_ref(&repo, "HEAD", &[], "initial commit", "hello");
 
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         let pathlib = py.import("pathlib").unwrap();
         let path_obj = pathlib.getattr("Path").unwrap().call1((dir.path(),)).unwrap();
         let py_repo = open_repo(py, path_obj.unbind()).unwrap();
@@ -62,7 +62,7 @@ fn open_repo_expands_tilde() {
     let home_str = home.path().to_str().expect("home path should be valid unicode").to_owned();
     unsafe { env::set_var("HOME", &home_str); }
 
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         let os = py.import("os").unwrap();
         let environ = os.getattr("environ").unwrap();
         environ.call_method1("__setitem__", ("HOME", &home_str)).unwrap();
@@ -126,7 +126,7 @@ fn change_commit_message_rejects_non_head() {
     let non_head = commits.last().expect("should have two commits");
     match py_repo.change_commit_message(&non_head.id, "should fail") {
         Ok(_) => panic!("expected amending non-HEAD to fail"),
-        Err(err) => Python::with_gil(|py| {
+        Err(err) => Python::attach(|py| {
             assert!(err.is_instance_of::<PyValueError>(py));
         }),
     }
@@ -166,7 +166,7 @@ fn rewrite_author_rejects_non_head() {
     let non_head = commits.last().expect("should have two commits");
     match py_repo.rewrite_author(&non_head.id, "New Name", "new@example.com", None) {
         Ok(_) => panic!("expected rewriting non-HEAD to fail"),
-        Err(err) => Python::with_gil(|py| {
+        Err(err) => Python::attach(|py| {
             assert!(err.is_instance_of::<PyValueError>(py));
         }),
     }
