@@ -2,7 +2,7 @@ import histgit
 
 
 def main() -> None:
-    repo = histgit.open_repo("~/Dev/test-git")
+    repo = histgit.open_repo("./test-git")
     head = repo.head()
     print(f"HEAD: {head.id if head else 'None'}")
 

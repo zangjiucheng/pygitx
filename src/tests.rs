@@ -132,6 +132,46 @@ fn change_commit_message_rejects_non_head() {
     }
 }
 
+#[test]
+fn rewrite_author_updates_head() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    create_commit_with_message(&repo, "initial commit", "hello");
+    let mut py_repo = PyRepo { repo };
+
+    let original = py_repo.head().unwrap().unwrap();
+    assert_eq!(original.author, "HistGit");
+
+    let amended = py_repo
+        .rewrite_author(&original.id, "New Name", "new@example.com", Some(true))
+        .unwrap();
+    assert_eq!(amended.author, "New Name");
+
+    let head_after = py_repo.head().unwrap().unwrap();
+    assert_eq!(head_after.id, amended.id);
+    assert_eq!(head_after.author, "New Name");
+}
+
+#[test]
+fn rewrite_author_rejects_non_head() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    create_commit_with_message(&repo, "first", "hello");
+    create_commit_with_message(&repo, "second", "hello again");
+    let mut py_repo = PyRepo { repo };
+
+    let commits = py_repo.list_commits(Some(10)).unwrap();
+    let non_head = commits.last().expect("should have two commits");
+    match py_repo.rewrite_author(&non_head.id, "New Name", "new@example.com", None) {
+        Ok(_) => panic!("expected rewriting non-HEAD to fail"),
+        Err(err) => Python::with_gil(|py| {
+            assert!(err.is_instance_of::<PyValueError>(py));
+        }),
+    }
+}
+
 fn init_python() {
     // Initialize the embedded Python interpreter once for PyO3-bound types used in tests.
     static INIT: std::sync::Once = std::sync::Once::new();

@@ -1,6 +1,6 @@
 use crate::errors::py_git_err;
 use crate::types::PyCommitInfo;
-use git2::{ErrorClass, ErrorCode, Repository};
+use git2::{ErrorClass, ErrorCode, Repository, Signature};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyString;
@@ -119,6 +119,92 @@ impl PyRepo {
         let new_oid = target_commit
             .amend(Some("HEAD"), None, None, None, Some(new_message), None)
             .map_err(|err| py_git_err("failed to amend commit message", err))?;
+        let amended = self
+            .repo
+            .find_commit(new_oid)
+            .map_err(|err| py_git_err("failed to load amended commit", err))?;
+
+        Ok(PyCommitInfo::from_commit(&amended))
+    }
+
+    /// Rewrite the author (and optionally committer) of the HEAD commit.
+    ///
+    /// Args:
+    ///     commit_id (str): Commit to rewrite. Must resolve to HEAD.
+    ///     new_name (str): New author name.
+    ///     new_email (str): New author email.
+    ///     update_committer (bool): If True, also update committer to the same identity (default True).
+    ///
+    /// Returns:
+    ///     CommitInfo: The amended commit (with a new id).
+    ///
+    /// Notes:
+    ///     - This rewrites history; descendants will now point to a new commit.
+    ///     - Only HEAD is supported; older commits require a rebase-style rewrite.
+    #[pyo3(
+        text_signature = "($self, commit_id, new_name, new_email, update_committer=True)",
+        signature = (commit_id, new_name, new_email, update_committer = true)
+    )]
+    pub fn rewrite_author(
+        &mut self,
+        commit_id: &str,
+        new_name: &str,
+        new_email: &str,
+        update_committer: Option<bool>,
+    ) -> PyResult<PyCommitInfo> {
+        if new_name.trim().is_empty() {
+            return Err(PyValueError::new_err("new author name cannot be empty"));
+        }
+        if new_email.trim().is_empty() {
+            return Err(PyValueError::new_err("new author email cannot be empty"));
+        }
+
+        let head_ref = match self.repo.head() {
+            Ok(reference) => reference,
+            Err(err) if err.code() == ErrorCode::UnbornBranch || err.code() == ErrorCode::NotFound => {
+                return Err(PyValueError::new_err("cannot rewrite author: repository has no HEAD commit"));
+            }
+            Err(err) => return Err(py_git_err("failed to read HEAD", err)),
+        };
+
+        let head_commit = match head_ref.peel_to_commit() {
+            Ok(commit) => commit,
+            Err(err) if err.code() == ErrorCode::UnbornBranch || err.code() == ErrorCode::NotFound => {
+                return Err(PyValueError::new_err("cannot rewrite author: repository has no HEAD commit"));
+            }
+            Err(err) => return Err(py_git_err("failed to resolve HEAD to commit", err)),
+        };
+
+        let target_obj = self
+            .repo
+            .revparse_single(commit_id)
+            .map_err(|err| PyValueError::new_err(format!("invalid commit id '{}': {}", commit_id, err)))?;
+        let target_commit = target_obj
+            .peel_to_commit()
+            .map_err(|err| PyValueError::new_err(format!("object '{}' is not a commit: {}", commit_id, err)))?;
+
+        if target_commit.id() != head_commit.id() {
+            return Err(PyValueError::new_err(
+                "rewriting author is currently supported only for HEAD; rebase needed for older commits",
+            ));
+        }
+
+        let author_time = target_commit.author().when();
+        let new_author = Signature::new(new_name, new_email, &author_time)
+            .map_err(|err| PyValueError::new_err(format!("invalid author identity: {}", err)))?;
+        let committer_sig = if update_committer.unwrap_or(true) {
+            Some(
+                Signature::new(new_name, new_email, &target_commit.committer().when())
+                    .map_err(|err| PyValueError::new_err(format!("invalid committer identity: {}", err)))?,
+            )
+        } else {
+            None
+        };
+
+        let new_oid = target_commit
+            .amend(Some("HEAD"), Some(&new_author), committer_sig.as_ref(), None, None, None)
+            .map_err(|err| py_git_err("failed to rewrite author", err))?;
+
         let amended = self
             .repo
             .find_commit(new_oid)

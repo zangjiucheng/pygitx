@@ -7,5 +7,5 @@ print("HEAD:", head.id if head else "None")
 
 # Amending the latest commit message (rewrites history)
 if head:
-    updated = repo.change_commit_message(head.id, "new message for HEAD")
+    updated = repo.rewrite_author(head.id, "Jiucheng", "hex4a5a@duck.com")
     print("Amended HEAD:", updated.id, updated.summary)
