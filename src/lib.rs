@@ -5,7 +5,7 @@ mod errors;
 mod repo;
 mod types;
 
-pub use crate::repo::{open_repo, PyRepo};
+pub use crate::repo::{PyRepo, open_repo};
 pub use crate::types::PyCommitInfo;
 
 #[pymodule]

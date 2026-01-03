@@ -47,6 +47,17 @@ replace it with a new commit:
 **Warning:** These operations rewrite history. Avoid using them on published
 branches unless you are prepared to force-push and coordinate with consumers.
 
+Squashing commits
+-----------------
+
+Collapse the latest commits into one. Use ``mode="squash"`` (default) to concatenate messages, or
+``mode="fixup"`` to keep only the oldest message.
+
+.. code-block:: python
+
+   squashed = repo.squash_last(3, mode="squash")
+   print("Squashed:", squashed.id, squashed.summary)
+
 Rebasing a branch
 -----------------
 

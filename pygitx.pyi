@@ -28,6 +28,8 @@ class Repo:
         """Amend HEAD with new author (and committer if update_committer). commit_id must resolve to HEAD."""
     def rebase_branch(self, branch: str, onto: str) -> list[tuple[str, str]]:
         """Rebase a local branch onto a new base (pick-only). Returns [(old_id, new_id)] mapping."""
+    def squash_last(self, count: int, mode: str = "squash", message: str | None = None) -> CommitInfo:
+        """Squash the last N commits into one. mode: 'squash' (keep all messages) or 'fixup' (keep oldest message)."""
 
 def open_repo(path: PathLikeStr) -> Repo:
     """Open a git repository at path (str or os.PathLike)."""

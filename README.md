@@ -9,6 +9,7 @@ Cross-platform Git history access implemented in Rust with a Python API via PyO3
 - `Repo.change_commit_message(commit_id, new_message)` to amend the HEAD commit message.
 - `Repo.rewrite_author(commit_id, new_name, new_email, update_committer=True)` to rewrite HEAD author (optionally committer).
 - `Repo.rebase_branch(branch, onto)` to replay a branch onto a new base (pick-only).
+- `Repo.squash_last(count, mode="squash", message=None)` to squash the latest commits (or fixup-style).
 - Vendored libgit2 for predictable, cross-platform builds.
 
 ## Quick start (editable install)
@@ -46,6 +47,11 @@ if head:
 if head:
     updated = repo.rewrite_author(head.id, "New Name", "new@example.com")
     print("Amended author:", updated.id, updated.author, updated.email)
+
+# Squash the last 3 commits (keep all messages); use mode="fixup" to keep only the oldest message
+if head:
+    squashed = repo.squash_last(3)
+    print("Squashed tip:", squashed.id, squashed.summary)
 
 # Rebase a branch onto a new base (pick-only)
 updated_commits = repo.rebase_branch("feature", "main")

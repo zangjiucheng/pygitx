@@ -67,6 +67,10 @@ Classes
 
       Rebase a local branch onto a new base (pick-only). Returns ``[(old_id, new_id)]`` mapping in replay order.
 
+   .. py:method:: squash_last(count: int, mode: str = "squash", message: str | None = None) -> CommitInfo
+
+      Squash the most recent commits into one. ``mode`` may be ``"squash"`` (concatenate messages) or ``"fixup"`` (keep oldest message). Raises if history is not linear across the requested range.
+
 Functions
 ---------
 

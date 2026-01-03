@@ -1,9 +1,9 @@
-use crate::repo::{open_repo, PyRepo};
-use git2::{build::CheckoutBuilder, BranchType, Commit, Oid, Repository, Signature};
-use pyo3::exceptions::PyValueError;
-use pyo3::types::PyString;
-use pyo3::types::PyAnyMethods;
+use crate::repo::{PyRepo, open_repo};
+use git2::{BranchType, Commit, Oid, Repository, Signature, build::CheckoutBuilder};
 use pyo3::Python;
+use pyo3::exceptions::PyValueError;
+use pyo3::types::PyAnyMethods;
+use pyo3::types::PyString;
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -44,7 +44,11 @@ fn open_repo_accepts_pathlike() {
 
     Python::attach(|py| {
         let pathlib = py.import("pathlib").unwrap();
-        let path_obj = pathlib.getattr("Path").unwrap().call1((dir.path(),)).unwrap();
+        let path_obj = pathlib
+            .getattr("Path")
+            .unwrap()
+            .call1((dir.path(),))
+            .unwrap();
         let py_repo = open_repo(py, path_obj.unbind()).unwrap();
         assert!(py_repo.head().unwrap().is_some());
     });
@@ -59,13 +63,21 @@ fn open_repo_expands_tilde() {
     create_commit_on_ref(&repo, "HEAD", &[], "initial commit", "hello");
 
     let prev_home = env::var_os("HOME");
-    let home_str = home.path().to_str().expect("home path should be valid unicode").to_owned();
-    unsafe { env::set_var("HOME", &home_str); }
+    let home_str = home
+        .path()
+        .to_str()
+        .expect("home path should be valid unicode")
+        .to_owned();
+    unsafe {
+        env::set_var("HOME", &home_str);
+    }
 
     Python::attach(|py| {
         let os = py.import("os").unwrap();
         let environ = os.getattr("environ").unwrap();
-        environ.call_method1("__setitem__", ("HOME", &home_str)).unwrap();
+        environ
+            .call_method1("__setitem__", ("HOME", &home_str))
+            .unwrap();
 
         let tilde_path = PyString::new(py, "~/repo");
         let py_repo = open_repo(py, tilde_path.unbind().into()).unwrap();
@@ -81,9 +93,13 @@ fn open_repo_expands_tilde() {
 
     // Restore process HOME
     if let Some(val) = prev_home {
-        unsafe { env::set_var("HOME", val); }
+        unsafe {
+            env::set_var("HOME", val);
+        }
     } else {
-        unsafe { env::remove_var("HOME"); }
+        unsafe {
+            env::remove_var("HOME");
+        }
     }
 }
 
@@ -105,10 +121,19 @@ fn change_commit_message_updates_head_commit() {
     let head_after = py_repo.head().unwrap().unwrap();
     assert_eq!(head_after.id, amended.id);
 
-    let original_commit = py_repo.repo.find_commit(Oid::from_str(&original.id).unwrap()).unwrap();
-    let amended_commit = py_repo.repo.find_commit(Oid::from_str(&amended.id).unwrap()).unwrap();
+    let original_commit = py_repo
+        .repo
+        .find_commit(Oid::from_str(&original.id).unwrap())
+        .unwrap();
+    let amended_commit = py_repo
+        .repo
+        .find_commit(Oid::from_str(&amended.id).unwrap())
+        .unwrap();
     assert_eq!(original_commit.tree_id(), amended_commit.tree_id());
-    assert_eq!(original_commit.parent_count(), amended_commit.parent_count());
+    assert_eq!(
+        original_commit.parent_count(),
+        amended_commit.parent_count()
+    );
 }
 
 #[test]
@@ -188,10 +213,18 @@ fn rebase_branch_replays_commits() {
     }
 
     // Commit on feature (divergent).
-    let feature1 = create_commit_on_ref_with_path(&repo, "refs/heads/feature", &[base1], "feature.txt", "feature1", "feature1");
+    let feature1 = create_commit_on_ref_with_path(
+        &repo,
+        "refs/heads/feature",
+        &[base1],
+        "feature.txt",
+        "feature1",
+        "feature1",
+    );
 
     // New base on main after branch.
-    let base2 = create_commit_on_ref_with_path(&repo, "HEAD", &[base1], "file.txt", "base2", "base2");
+    let base2 =
+        create_commit_on_ref_with_path(&repo, "HEAD", &[base1], "file.txt", "base2", "base2");
 
     // Ensure working tree matches base branch before rebase.
     let mut checkout = CheckoutBuilder::new();
@@ -206,9 +239,56 @@ fn rebase_branch_replays_commits() {
     assert_eq!(mappings[0].0, feature1.to_string());
 
     // Feature branch should now point to the new tip.
-    let feature_branch = py_repo.repo.find_branch("feature", BranchType::Local).unwrap();
+    let feature_branch = py_repo
+        .repo
+        .find_branch("feature", BranchType::Local)
+        .unwrap();
     let feature_head = feature_branch.into_reference().target().unwrap();
     assert_eq!(feature_head.to_string(), mappings[0].1);
+}
+
+#[test]
+fn squash_last_combines_commits() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    let first = create_commit_on_ref(&repo, "HEAD", &[], "first", "a");
+    let second = create_commit_on_ref(&repo, "HEAD", &[first], "second", "b");
+    create_commit_on_ref(&repo, "HEAD", &[second], "third", "c");
+    let mut py_repo = PyRepo { repo };
+
+    let squashed = py_repo.squash_last(3, Some("squash"), None).unwrap();
+    let head = py_repo.head().unwrap().unwrap();
+    assert_eq!(head.id, squashed.id);
+    assert_eq!(py_repo.list_commits(Some(10)).unwrap().len(), 1);
+
+    let commit = py_repo
+        .repo
+        .find_commit(Oid::from_str(&squashed.id).unwrap())
+        .unwrap();
+    let message = commit.message().unwrap_or_default();
+    assert!(message.contains("first"));
+    assert!(message.contains("second"));
+    assert!(message.contains("third"));
+    assert_eq!(commit.parent_count(), 0);
+}
+
+#[test]
+fn squash_last_fixup_uses_oldest_message() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    let base = create_commit_on_ref(&repo, "HEAD", &[], "base", "base");
+    create_commit_on_ref(&repo, "HEAD", &[base], "tip", "tip");
+    let mut py_repo = PyRepo { repo };
+
+    let squashed = py_repo.squash_last(2, Some("fixup"), None).unwrap();
+    let commit = py_repo
+        .repo
+        .find_commit(Oid::from_str(&squashed.id).unwrap())
+        .unwrap();
+    assert_eq!(commit.summary(), Some("base"));
+    assert_eq!(commit.parent_count(), 0);
 }
 
 fn init_python() {
@@ -219,7 +299,13 @@ fn init_python() {
     });
 }
 
-fn create_commit_on_ref(repo: &Repository, reference: &str, parent_oids: &[Oid], message: &str, content: &str) -> Oid {
+fn create_commit_on_ref(
+    repo: &Repository,
+    reference: &str,
+    parent_oids: &[Oid],
+    message: &str,
+    content: &str,
+) -> Oid {
     create_commit_on_ref_with_path(repo, reference, parent_oids, "file.txt", message, content)
 }
 

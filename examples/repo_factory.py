@@ -78,3 +78,20 @@ def load_repo_path() -> Path | None:
     except Exception:
         return None
     return None
+
+
+def clean_repo() -> None:
+    """Remove the generated repo path (if recorded) and delete the directory."""
+    path = load_repo_path()
+    if path and path.exists():
+        try:
+            import shutil
+
+            shutil.rmtree(path, ignore_errors=True)
+        except Exception:
+            pass
+    if GENERATED_MODULE.exists():
+        try:
+            GENERATED_MODULE.unlink()
+        except Exception:
+            pass

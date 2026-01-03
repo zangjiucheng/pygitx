@@ -5,6 +5,7 @@ Unified demo script for pygitx.
 - List commits from a repo.
 - Amend HEAD message or author.
 - Rebase a branch onto a new base (pick-only).
+- Squash the latest commits (squash or fixup message handling).
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from pathlib import Path
 import subprocess
 
 import pygitx
-from repo_factory import generate_repo, load_repo_path
+from repo_factory import clean_repo, generate_repo, load_repo_path
 
 
 def run(cmd: list[str], cwd: Path) -> None:
@@ -55,12 +56,21 @@ def rebase_branch(repo: pygitx.Repo, branch: str, onto: str) -> None:
         print(f"  {old[:7]} -> {new[:7]}")
 
 
+def squash_last(repo: pygitx.Repo, count: int, mode: str, message: str | None) -> None:
+    squashed = repo.squash_last(count, mode=mode, message=message)
+    print(f"Squashed top {count} commits -> {squashed.id[:7]}")
+    print(f"Summary: {squashed.summary}")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="pygitx demo utilities")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     gen = sub.add_parser("generate", help="create a throwaway repo with sample commits (persists path)")
     gen.add_argument("--dest", type=Path, help="destination directory (default: temp dir)")
+    gen.add_argument("--no-persist", action="store_true", help="do not persist generated repo path")
+
+    clean = sub.add_parser("clean", help="delete the last generated repo and reset state")
 
     ls = sub.add_parser("list", help="list commits from a repo")
     ls.add_argument("path", nargs="?", type=Path, help="path to repo (default: last generated)")
@@ -80,6 +90,12 @@ def parse_args() -> argparse.Namespace:
     rebase.add_argument("branch", help="branch to rebase")
     rebase.add_argument("onto", help="onto commit-ish (e.g., main or a commit id)")
 
+    squash = sub.add_parser("squash", help="squash the most recent commits")
+    squash.add_argument("path", nargs="?", type=Path, help="path to repo (default: last generated)")
+    squash.add_argument("count", type=int, help="number of latest commits to squash (>=2)")
+    squash.add_argument("--mode", choices=["squash", "fixup"], default="squash", help="message handling")
+    squash.add_argument("--message", help="explicit commit message for the squashed commit")
+
     return parser.parse_args()
 
 
@@ -87,10 +103,14 @@ def main() -> None:
     args = parse_args()
 
     if args.cmd == "generate":
-        path = generate_repo(args.dest)
+        path = generate_repo(args.dest, persist=not args.no_persist)
         print(f"Repo created at: {path}")
         print("Branches:")
         subprocess.run(["git", "show-branch", "--list"], cwd=path, check=True)
+        return
+    if args.cmd == "clean":
+        clean_repo()
+        print("Cleared generated repo and state.")
         return
 
     repo_path = args.path or load_repo_path()
@@ -106,6 +126,8 @@ def main() -> None:
         rewrite_author(repo, args.name, args.email)
     elif args.cmd == "rebase":
         rebase_branch(repo, args.branch, args.onto)
+    elif args.cmd == "squash":
+        squash_last(repo, args.count, args.mode, args.message)
 
 
 if __name__ == "__main__":
