@@ -6,6 +6,7 @@ Cross-platform Git history access implemented in Rust with a Python API via PyO3
 - `histgit.open_repo(path) -> Repo` to access repositories.
 - `Repo.head()` for the current HEAD commit (or `None` if unborn).
 - `Repo.list_commits(max=None)` to iterate commits from HEAD (newest first).
+- `Repo.change_commit_message(commit_id, new_message)` to amend the HEAD commit message.
 - Vendored libgit2 for predictable, cross-platform builds.
 
 ## Quick start (editable install)
@@ -25,13 +26,19 @@ maturin build --release
 ## Python usage
 ```python
 import histgit
+from pathlib import Path
 
-repo = histgit.open_repo(".")
+repo = histgit.open_repo(Path("."))
 head = repo.head()
 print("HEAD:", head.id if head else "None")
 
 for c in repo.list_commits(max=5):
     print(f"{c.id[:7]} {c.author} <{c.email}> {c.summary}")
+
+# Amending the latest commit message (rewrites history)
+if head:
+    updated = repo.change_commit_message(head.id, "new message for HEAD")
+    print("Amended HEAD:", updated.id, updated.summary)
 ```
 
 Example script: `examples/list_commits.py`.
@@ -43,4 +50,5 @@ Example script: `examples/list_commits.py`.
 ## Notes / future
 - ABI3 wheel targeting Python 3.9+ (`abi3-py39`).
 - Built on `git2` (libgit2) for speed and portability.
+- Amending commit messages rewrites history; avoid on published branches unless you know the consequences.
 - Future roadmap: commit message edits, author rewrites, squash/rebase helpers, filtering.

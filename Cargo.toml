@@ -9,6 +9,9 @@ description = "Cross-platform Git history access via Rust with a Python API"
 name = "histgit"
 crate-type = ["cdylib", "lib"]
 
+[package.metadata.maturin]
+include = ["histgit.pyi"]
+
 [features]
 default = []
 python-extension = ["pyo3/extension-module"]
