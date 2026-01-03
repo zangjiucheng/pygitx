@@ -9,7 +9,7 @@ pub use crate::repo::{open_repo, PyRepo};
 pub use crate::types::PyCommitInfo;
 
 #[pymodule]
-fn histgit(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
+fn pygitx(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<PyRepo>()?;
     m.add_class::<PyCommitInfo>()?;
     m.add_function(wrap_pyfunction!(open_repo, m)?)?;

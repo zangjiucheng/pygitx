@@ -4,12 +4,12 @@ API Reference
 Module
 ------
 
-.. module:: histgit
+.. module:: pygitx
 
 Classes
 -------
 
-.. py:class:: histgit.CommitInfo
+.. py:class:: pygitx.CommitInfo
 
    Lightweight, read-only view of a git commit.
 
@@ -43,7 +43,7 @@ Classes
 
       Timezone offset in minutes.
 
-.. py:class:: histgit.Repo
+.. py:class:: pygitx.Repo
 
    Thin wrapper around a git repository.
 
@@ -70,6 +70,6 @@ Classes
 Functions
 ---------
 
-.. py:function:: histgit.open_repo(path: str | os.PathLike[str]) -> Repo
+.. py:function:: pygitx.open_repo(path: str | os.PathLike[str]) -> Repo
 
    Open a git repository at ``path``. Supports ``pathlib.Path`` and ``~`` expansion.

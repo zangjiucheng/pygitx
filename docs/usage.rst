@@ -17,10 +17,10 @@ Open a repository and read commits (or use ``examples/demo.py generate`` to crea
 
 .. code-block:: python
 
-   import histgit
+   import pygitx
    from pathlib import Path
 
-   repo = histgit.open_repo(Path("."))
+   repo = pygitx.open_repo(Path("."))
    head = repo.head()
    print("HEAD:", head.id if head else "None")
 

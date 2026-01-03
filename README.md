@@ -1,9 +1,9 @@
-# histgit
+# pygitx
 
 Cross-platform Git history access implemented in Rust with a Python API via PyO3 and libgit2.
 
 ## What you get
-- `histgit.open_repo(path) -> Repo` to access repositories.
+- `pygitx.open_repo(path) -> Repo` to access repositories.
 - `Repo.head()` for the current HEAD commit (or `None` if unborn).
 - `Repo.list_commits(max=None)` to iterate commits from HEAD (newest first).
 - `Repo.change_commit_message(commit_id, new_message)` to amend the HEAD commit message.
@@ -27,10 +27,10 @@ maturin build --release
 
 ## Python usage
 ```python
-import histgit
+import pygitx
 from pathlib import Path
 
-repo = histgit.open_repo(Path("."))
+repo = pygitx.open_repo(Path("."))
 head = repo.head()
 print("HEAD:", head.id if head else "None")
 

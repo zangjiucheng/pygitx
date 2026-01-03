@@ -1,5 +1,5 @@
 """
-Helpers to generate sample git repositories for histgit demos/tests.
+Helpers to generate sample git repositories for pygitx demos/tests.
 """
 
 from __future__ import annotations
@@ -17,12 +17,12 @@ def run(cmd: list[str], cwd: Path) -> None:
 
 def generate_repo(dest: Path | None = None, persist: bool = True) -> Path:
     """Create a sample repo; optionally persist its path for later reuse."""
-    repo_path = dest or Path(tempfile.mkdtemp(prefix="histgit-demo-"))
+    repo_path = dest or Path(tempfile.mkdtemp(prefix="pygitx-demo-"))
     repo_path.mkdir(parents=True, exist_ok=True)
 
     run(["git", "init", "-q"], cwd=repo_path)
-    run(["git", "config", "user.name", "HistGit"], cwd=repo_path)
-    run(["git", "config", "user.email", "histgit@example.com"], cwd=repo_path)
+    run(["git", "config", "user.name", "PyGitX"], cwd=repo_path)
+    run(["git", "config", "user.email", "pygitx@example.com"], cwd=repo_path)
 
     # Commit 1 on main
     (repo_path / "file.txt").write_text("hello\n")

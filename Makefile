@@ -3,7 +3,7 @@ PYTHON ?= python
 
 help:
 	@echo "Targets:"
-	@echo "  develop  - install histgit in editable mode (expects maturin available)"
+	@echo "  develop  - install pygitx in editable mode (expects maturin available)"
 	@echo "  release  - build wheel (expects maturin available)"
 	@echo "  docs     - build Sphinx docs to docs/_build/html (expects sphinx available)"
 	@echo "  test     - run cargo tests (including python-tests feature)"

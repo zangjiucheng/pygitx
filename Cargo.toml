@@ -1,16 +1,16 @@
 [package]
-name = "histgit"
+name = "pygitx"
 version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Cross-platform Git history access via Rust with a Python API"
 
 [lib]
-name = "histgit"
+name = "pygitx"
 crate-type = ["cdylib", "lib"]
 
 [package.metadata.maturin]
-include = ["histgit.pyi"]
+include = ["pygitx.pyi"]
 
 [features]
 default = []

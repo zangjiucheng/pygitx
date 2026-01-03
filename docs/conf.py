@@ -7,8 +7,8 @@ ROOT = os.path.abspath(os.path.join(__file__, "..", ".."))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-project = "histgit"
-author = "histgit contributors"
+project = "PyGitX"
+author = "pygitx contributors"
 copyright = f"{datetime.now():%Y}, {author}"
 release = "0.1.0"
 
@@ -24,5 +24,5 @@ html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
 
 # We describe the Python surface manually (not relying on importing the extension at build time).
-autodoc_mock_imports = ["histgit"]
+autodoc_mock_imports = ["pygitx"]
 autodoc_member_order = "bysource"

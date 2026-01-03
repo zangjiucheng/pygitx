@@ -1,5 +1,5 @@
 """
-Unified demo script for histgit.
+Unified demo script for pygitx.
 
 - Create a throwaway repo with sample branches/commits.
 - List commits from a repo.
@@ -13,7 +13,7 @@ import argparse
 from pathlib import Path
 import subprocess
 
-import histgit
+import pygitx
 from repo_factory import generate_repo, load_repo_path
 
 
@@ -23,7 +23,7 @@ def run(cmd: list[str], cwd: Path) -> None:
     subprocess.run(cmd, cwd=cwd, check=True)
 
 
-def list_commits(repo: histgit.Repo, max_commits: int | None) -> None:
+def list_commits(repo: pygitx.Repo, max_commits: int | None) -> None:
     head = repo.head()
     print(f"HEAD: {head.id if head else 'None'}")
     for c in repo.list_commits(max=max_commits):
@@ -32,7 +32,7 @@ def list_commits(repo: histgit.Repo, max_commits: int | None) -> None:
         print(f"{c.id[:7]} {c.author} <{email}> {summary}")
 
 
-def amend_message(repo: histgit.Repo, message: str) -> None:
+def amend_message(repo: pygitx.Repo, message: str) -> None:
     head = repo.head()
     if not head:
         raise SystemExit("No HEAD to amend")
@@ -40,7 +40,7 @@ def amend_message(repo: histgit.Repo, message: str) -> None:
     print(f"Amended message: {head.id[:7]} -> {updated.id[:7]} [{updated.summary}]")
 
 
-def rewrite_author(repo: histgit.Repo, name: str, email: str) -> None:
+def rewrite_author(repo: pygitx.Repo, name: str, email: str) -> None:
     head = repo.head()
     if not head:
         raise SystemExit("No HEAD to rewrite")
@@ -48,7 +48,7 @@ def rewrite_author(repo: histgit.Repo, name: str, email: str) -> None:
     print(f"Amended author: {head.id[:7]} -> {updated.id[:7]} [{updated.author} <{updated.email}>]")
 
 
-def rebase_branch(repo: histgit.Repo, branch: str, onto: str) -> None:
+def rebase_branch(repo: pygitx.Repo, branch: str, onto: str) -> None:
     mappings = repo.rebase_branch(branch, onto)
     print("Replayed commits:")
     for old, new in mappings:
@@ -56,7 +56,7 @@ def rebase_branch(repo: histgit.Repo, branch: str, onto: str) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="histgit demo utilities")
+    parser = argparse.ArgumentParser(description="pygitx demo utilities")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     gen = sub.add_parser("generate", help="create a throwaway repo with sample commits (persists path)")
@@ -96,7 +96,7 @@ def main() -> None:
     repo_path = args.path or load_repo_path()
     if not repo_path:
         raise SystemExit("No repo path provided and no generated_repo.py found. Run `demo.py generate` first or pass a path.")
-    repo = histgit.open_repo(str(repo_path.expanduser()))
+    repo = pygitx.open_repo(str(repo_path.expanduser()))
 
     if args.cmd == "list":
         list_commits(repo, args.max)

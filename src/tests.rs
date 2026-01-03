@@ -141,7 +141,7 @@ fn rewrite_author_updates_head() {
     let mut py_repo = PyRepo { repo };
 
     let original = py_repo.head().unwrap().unwrap();
-    assert_eq!(original.author, "HistGit");
+    assert_eq!(original.author, "PyGitX");
 
     let amended = py_repo
         .rewrite_author(&original.id, "New Name", "new@example.com", Some(true))
@@ -231,7 +231,7 @@ fn create_commit_on_ref_with_path(
     message: &str,
     content: &str,
 ) -> Oid {
-    let sig = Signature::now("HistGit", "histgit@example.com").unwrap();
+    let sig = Signature::now("PyGitX", "pygitx@example.com").unwrap();
     let workdir = repo.workdir().expect("repo should have workdir");
     let file_path = workdir.join(path);
     fs::write(&file_path, content).unwrap();

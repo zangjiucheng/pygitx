@@ -1,5 +1,5 @@
-histgit
-=======
+PyGitX
+======
 
 Python bindings for Git history access, powered by Rust and libgit2.
 
