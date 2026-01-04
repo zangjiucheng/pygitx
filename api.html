@@ -1,0 +1,285 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API Reference &mdash; PyGitX 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Usage" href="usage.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            PyGitX
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-pygitx">Module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#classes">Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pygitx.pygitx.CommitInfo"><code class="docutils literal notranslate"><span class="pre">pygitx.CommitInfo</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.CommitInfo.id"><code class="docutils literal notranslate"><span class="pre">pygitx.CommitInfo.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.CommitInfo.summary"><code class="docutils literal notranslate"><span class="pre">pygitx.CommitInfo.summary</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.CommitInfo.author"><code class="docutils literal notranslate"><span class="pre">pygitx.CommitInfo.author</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.CommitInfo.email"><code class="docutils literal notranslate"><span class="pre">pygitx.CommitInfo.email</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.CommitInfo.time"><code class="docutils literal notranslate"><span class="pre">pygitx.CommitInfo.time</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.CommitInfo.offset_minutes"><code class="docutils literal notranslate"><span class="pre">pygitx.CommitInfo.offset_minutes</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#pygitx.pygitx.RewriteResult"><code class="docutils literal notranslate"><span class="pre">pygitx.RewriteResult</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.RewriteResult.old_to_new"><code class="docutils literal notranslate"><span class="pre">pygitx.RewriteResult.old_to_new</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.RewriteResult.updated_refs"><code class="docutils literal notranslate"><span class="pre">pygitx.RewriteResult.updated_refs</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.RewriteResult.warnings"><code class="docutils literal notranslate"><span class="pre">pygitx.RewriteResult.warnings</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#pygitx.pygitx.Repo"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.Repo.head"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo.head()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.Repo.list_commits"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo.list_commits()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.Repo.change_commit_message"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo.change_commit_message()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.Repo.rewrite_author"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo.rewrite_author()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.Repo.filter_commits"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo.filter_commits()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.Repo.remove_path"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo.remove_path()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.Repo.rebase_branch"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo.rebase_branch()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.Repo.squash_last"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo.squash_last()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#functions">Functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pygitx.pygitx.open_repo"><code class="docutils literal notranslate"><span class="pre">pygitx.open_repo()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pygitx.pygitx.create_backup_ref"><code class="docutils literal notranslate"><span class="pre">pygitx.create_backup_ref()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">PyGitX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">API Reference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/api.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading"></a></h1>
+<section id="module-pygitx">
+<span id="module"></span><h2>Module<a class="headerlink" href="#module-pygitx" title="Link to this heading"></a></h2>
+</section>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="pygitx.pygitx.CommitInfo">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pygitx.</span></span><span class="sig-name descname"><span class="pre">CommitInfo</span></span><a class="headerlink" href="#pygitx.pygitx.CommitInfo" title="Link to this definition"></a></dt>
+<dd><p>Lightweight, read-only view of a git commit.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pygitx.pygitx.CommitInfo.id">
+<span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#pygitx.pygitx.CommitInfo.id" title="Link to this definition"></a></dt>
+<dd><p>Full commit SHA.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pygitx.pygitx.CommitInfo.summary">
+<span class="sig-name descname"><span class="pre">summary</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#pygitx.pygitx.CommitInfo.summary" title="Link to this definition"></a></dt>
+<dd><p>One-line summary if present.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pygitx.pygitx.CommitInfo.author">
+<span class="sig-name descname"><span class="pre">author</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#pygitx.pygitx.CommitInfo.author" title="Link to this definition"></a></dt>
+<dd><p>Author name.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pygitx.pygitx.CommitInfo.email">
+<span class="sig-name descname"><span class="pre">email</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#pygitx.pygitx.CommitInfo.email" title="Link to this definition"></a></dt>
+<dd><p>Author email.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pygitx.pygitx.CommitInfo.time">
+<span class="sig-name descname"><span class="pre">time</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#pygitx.pygitx.CommitInfo.time" title="Link to this definition"></a></dt>
+<dd><p>Commit time (seconds since epoch).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pygitx.pygitx.CommitInfo.offset_minutes">
+<span class="sig-name descname"><span class="pre">offset_minutes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#pygitx.pygitx.CommitInfo.offset_minutes" title="Link to this definition"></a></dt>
+<dd><p>Timezone offset in minutes.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pygitx.pygitx.RewriteResult">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pygitx.</span></span><span class="sig-name descname"><span class="pre">RewriteResult</span></span><a class="headerlink" href="#pygitx.pygitx.RewriteResult" title="Link to this definition"></a></dt>
+<dd><p>Result of a history rewrite.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pygitx.pygitx.RewriteResult.old_to_new">
+<span class="sig-name descname"><span class="pre">old_to_new</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pygitx.pygitx.RewriteResult.old_to_new" title="Link to this definition"></a></dt>
+<dd><p>Mapping of original commit ids to rewritten commit ids.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pygitx.pygitx.RewriteResult.updated_refs">
+<span class="sig-name descname"><span class="pre">updated_refs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pygitx.pygitx.RewriteResult.updated_refs" title="Link to this definition"></a></dt>
+<dd><p>References (e.g., <code class="docutils literal notranslate"><span class="pre">HEAD</span></code> or <code class="docutils literal notranslate"><span class="pre">refs/heads/main</span></code>) updated to rewritten commits.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pygitx.pygitx.RewriteResult.warnings">
+<span class="sig-name descname"><span class="pre">warnings</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pygitx.pygitx.RewriteResult.warnings" title="Link to this definition"></a></dt>
+<dd><p>Non-fatal warnings emitted during the rewrite.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pygitx.pygitx.Repo">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pygitx.</span></span><span class="sig-name descname"><span class="pre">Repo</span></span><a class="headerlink" href="#pygitx.pygitx.Repo" title="Link to this definition"></a></dt>
+<dd><p>Thin wrapper around a git repository.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="pygitx.pygitx.Repo.head">
+<span class="sig-name descname"><span class="pre">head</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pygitx.pygitx.CommitInfo" title="pygitx.pygitx.CommitInfo"><span class="pre">CommitInfo</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="headerlink" href="#pygitx.pygitx.Repo.head" title="Link to this definition"></a></dt>
+<dd><p>Return the current HEAD commit, or None if HEAD is unborn/detached without a commit.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pygitx.pygitx.Repo.list_commits">
+<span class="sig-name descname"><span class="pre">list_commits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pygitx.pygitx.CommitInfo" title="pygitx.pygitx.CommitInfo"><span class="pre">CommitInfo</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pygitx.pygitx.Repo.list_commits" title="Link to this definition"></a></dt>
+<dd><p>Commits reachable from HEAD (newest first). Pass <code class="docutils literal notranslate"><span class="pre">max</span></code> to limit results.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pygitx.pygitx.Repo.change_commit_message">
+<span class="sig-name descname"><span class="pre">change_commit_message</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">commit_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pygitx.pygitx.RewriteResult" title="pygitx.pygitx.RewriteResult"><span class="pre">RewriteResult</span></a></span></span><a class="headerlink" href="#pygitx.pygitx.Repo.change_commit_message" title="Link to this definition"></a></dt>
+<dd><p>Amend HEAD with a new message (rewrites history). <code class="docutils literal notranslate"><span class="pre">commit_id</span></code> must resolve to HEAD.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pygitx.pygitx.Repo.rewrite_author">
+<span class="sig-name descname"><span class="pre">rewrite_author</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">commit_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_email</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">update_committer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pygitx.pygitx.RewriteResult" title="pygitx.pygitx.RewriteResult"><span class="pre">RewriteResult</span></a></span></span><a class="headerlink" href="#pygitx.pygitx.Repo.rewrite_author" title="Link to this definition"></a></dt>
+<dd><p>Amend HEAD with a new author (and committer if <code class="docutils literal notranslate"><span class="pre">update_committer</span></code>). <code class="docutils literal notranslate"><span class="pre">commit_id</span></code> must resolve to HEAD.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pygitx.pygitx.Repo.filter_commits">
+<span class="sig-name descname"><span class="pre">filter_commits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">author</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message_contains</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pygitx.pygitx.RewriteResult" title="pygitx.pygitx.RewriteResult"><span class="pre">RewriteResult</span></a></span></span><a class="headerlink" href="#pygitx.pygitx.Repo.filter_commits" title="Link to this definition"></a></dt>
+<dd><p>Drop commits matching author or message substring; merge commits are rejected.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pygitx.pygitx.Repo.remove_path">
+<span class="sig-name descname"><span class="pre">remove_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path_pattern</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pygitx.pygitx.RewriteResult" title="pygitx.pygitx.RewriteResult"><span class="pre">RewriteResult</span></a></span></span><a class="headerlink" href="#pygitx.pygitx.Repo.remove_path" title="Link to this definition"></a></dt>
+<dd><p>Purge a path (glob) from all commits reachable from HEAD; merge commits are rejected.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pygitx.pygitx.Repo.rebase_branch">
+<span class="sig-name descname"><span class="pre">rebase_branch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">branch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">onto</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pygitx.pygitx.RewriteResult" title="pygitx.pygitx.RewriteResult"><span class="pre">RewriteResult</span></a></span></span><a class="headerlink" href="#pygitx.pygitx.Repo.rebase_branch" title="Link to this definition"></a></dt>
+<dd><p>Rebase a local branch onto a new base (pick-only). Returns old-to-new commit mapping in replay order.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pygitx.pygitx.Repo.squash_last">
+<span class="sig-name descname"><span class="pre">squash_last</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'squash'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pygitx.pygitx.RewriteResult" title="pygitx.pygitx.RewriteResult"><span class="pre">RewriteResult</span></a></span></span><a class="headerlink" href="#pygitx.pygitx.Repo.squash_last" title="Link to this definition"></a></dt>
+<dd><p>Squash the most recent commits into one. <code class="docutils literal notranslate"><span class="pre">mode</span></code> may be <code class="docutils literal notranslate"><span class="pre">&quot;squash&quot;</span></code> (concatenate messages) or <code class="docutils literal notranslate"><span class="pre">&quot;fixup&quot;</span></code> (keep oldest message). Raises if history is not linear across the requested range.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="pygitx.pygitx.open_repo">
+<span class="sig-prename descclassname"><span class="pre">pygitx.</span></span><span class="sig-name descname"><span class="pre">open_repo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">os.PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pygitx.pygitx.Repo" title="pygitx.pygitx.Repo"><span class="pre">Repo</span></a></span></span><a class="headerlink" href="#pygitx.pygitx.open_repo" title="Link to this definition"></a></dt>
+<dd><p>Open a git repository at <code class="docutils literal notranslate"><span class="pre">path</span></code>. Supports <code class="docutils literal notranslate"><span class="pre">pathlib.Path</span></code> and <code class="docutils literal notranslate"><span class="pre">~</span></code> expansion.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pygitx.pygitx.create_backup_ref">
+<span class="sig-prename descclassname"><span class="pre">pygitx.</span></span><span class="sig-name descname"><span class="pre">create_backup_ref</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">repo</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pygitx.pygitx.Repo" title="pygitx.pygitx.Repo"><span class="pre">Repo</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#pygitx.pygitx.create_backup_ref" title="Link to this definition"></a></dt>
+<dd><p>Create backup refs under <code class="docutils literal notranslate"><span class="pre">refs/pygitx/backup/&lt;timestamp&gt;</span></code> for HEAD and its branch (if attached).</p>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="usage.html" class="btn btn-neutral float-left" title="Usage" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, pygitx contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
