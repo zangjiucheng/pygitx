@@ -1,5 +1,5 @@
 UV ?= uv
-.PHONY: help venv develop release docs test clean cleancargo cleanvenv
+.PHONY: help venv develop release docs test coverage clean cleancargo cleanvenv
 
 help:
 	@echo "Targets:"
@@ -9,6 +9,7 @@ help:
 	@echo "  release  - build wheel (pip wheel . -w dist)"
 	@echo "  docs     - install docs/requirements.txt and build Sphinx docs to docs/_build/html (via uv)"
 	@echo "  test     - run cargo tests (including python-tests feature)"
+	@echo "  coverage - run pytest with coverage for python package"
 	@echo "  clean    - remove build artifacts and .venv"
 	@echo "  cleancargo - cargo clean only"
 	@echo "  cleanvenv  - remove local .venv"
@@ -17,7 +18,7 @@ venv:
 	@if [ -d .venv ]; then echo ".venv already exists; skipping creation"; else $(UV) venv; fi
 	
 install:
-	$(UV) pip install --upgrade pip setuptools wheel maturin
+	$(UV) pip install --upgrade pip setuptools wheel maturin pytest pytest-cov
 
 develop:
 	pip install -e .
@@ -31,6 +32,9 @@ docs:
 
 test:
 	cargo test --features python-tests
+
+coverage:
+	pytest --cov=python/pygitx --cov-report=term-missing
 
 clean: cleancargo cleanvenv
 	rm -rf target/wheels

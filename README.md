@@ -1,6 +1,7 @@
 # PyGitX
 
 [![pypi](https://img.shields.io/pypi/v/pygitx.svg)](https://pypi.org/project/pygitx/)
+[![coverage](https://img.shields.io/codecov/c/github/zangjiucheng/pygitx)](https://codecov.io/gh/zangjiucheng/pygitx)
 [![support-version](https://img.shields.io/pypi/pyversions/pygitx)](https://img.shields.io/pypi/pyversions/pygitx)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![build](https://img.shields.io/github/actions/workflow/status/zangjiucheng/pygitx/publish-to-pypi.yml?label=build)](https://github.com/zangjiucheng/pygitx/actions)

@@ -28,7 +28,7 @@ Homepage = "https://github.com/zangjiucheng/pygitx"
 Documentation = "https://zangjiucheng.github.io/pygitx"
 
 [project.optional-dependencies]
-dev = ["maturin"]
+dev = ["maturin", "pytest", "pytest-cov"]
 
 [tool.maturin]
 module-name = "pygitx._native"
