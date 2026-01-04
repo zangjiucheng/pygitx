@@ -14,6 +14,7 @@ Cross-platform Git history access implemented in Rust with a Python API via PyO3
 - `Repo.remove_path(path_pattern)` to purge a path (glob) from all commits.
 - Rewrite operations return a `RewriteResult` with `old_to_new` commit ids, `updated_refs` (e.g., HEAD/branch), and any `warnings`.
 - Vendored libgit2 for predictable, cross-platform builds.
+- Python package `pygitx` wraps the native `_native` extension (`pygitx_native`) and handles lightweight validation/convenience in Python; heavy history work stays in Rust/libgit2.
 
 ## Quick start (editable install with uv)
 ```bash

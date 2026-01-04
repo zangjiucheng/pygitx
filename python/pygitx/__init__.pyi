@@ -6,8 +6,6 @@ from typing import Optional
 PathLikeStr = str | os.PathLike[str]
 
 class CommitInfo:
-    """Lightweight, read-only view of a git commit."""
-
     id: str
     summary: Optional[str]
     author: str
@@ -16,15 +14,11 @@ class CommitInfo:
     offset_minutes: int
 
 class RewriteResult:
-    """Outcome of a history rewrite."""
-
     old_to_new: dict[str, str]
     updated_refs: dict[str, str]
     warnings: list[str]
 
 class Repo:
-    """Native repo wrapper around libgit2 (performance-critical)."""
-
     def head(self) -> Optional[CommitInfo]: ...
     def list_commits(self, max: Optional[int] = None) -> list[CommitInfo]: ...
     def change_commit_message(self, commit_id: str, new_message: str) -> RewriteResult: ...

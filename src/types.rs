@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 /// Result of a history rewrite operation.
 #[pyclass(name = "RewriteResult")]
+#[derive(Default)]
 pub struct RewriteResult {
     pub old_to_new: HashMap<Oid, Oid>,
     pub updated_refs: HashMap<String, Oid>,
@@ -12,11 +13,7 @@ pub struct RewriteResult {
 
 impl RewriteResult {
     pub fn new() -> Self {
-        Self {
-            old_to_new: HashMap::new(),
-            updated_refs: HashMap::new(),
-            warnings: Vec::new(),
-        }
+        Self::default()
     }
 
     pub fn with_maps(

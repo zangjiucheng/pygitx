@@ -6,11 +6,12 @@ license = "MIT OR Apache-2.0"
 description = "Cross-platform Git history access via Rust with a Python API"
 
 [lib]
-name = "pygitx"
+name = "pygitx_native"
 crate-type = ["cdylib", "lib"]
 
 [package.metadata.maturin]
-include = ["pygitx.pyi"]
+include = ["pygitx.pyi", "python/pygitx"]
+python-source = "python"
 
 [features]
 default = []

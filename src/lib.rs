@@ -9,7 +9,7 @@ pub use crate::repo::{PyRepo, open_repo};
 pub use crate::types::{PyCommitInfo, RewriteResult};
 
 #[pymodule]
-fn pygitx(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
+fn pygitx_native(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<PyRepo>()?;
     m.add_class::<PyCommitInfo>()?;
     m.add_class::<RewriteResult>()?;

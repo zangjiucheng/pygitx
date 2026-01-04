@@ -15,6 +15,13 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import subprocess
+import sys
+
+# Ensure the local Python wrapper package is importable when running directly from the repo.
+REPO_ROOT = Path(__file__).resolve().parent.parent
+PY_PACKAGE_DIR = REPO_ROOT / "python"
+if PY_PACKAGE_DIR.exists():
+    sys.path.insert(0, str(PY_PACKAGE_DIR))
 
 import pygitx
 from repo_factory import clean_repo, generate_repo, load_repo_path
