@@ -9,6 +9,7 @@ pub struct RewriteResult {
     pub old_to_new: HashMap<Oid, Oid>,
     pub updated_refs: HashMap<String, Oid>,
     pub warnings: Vec<String>,
+    pub backup_root: Option<String>,
 }
 
 impl RewriteResult {
@@ -20,11 +21,13 @@ impl RewriteResult {
         old_to_new: HashMap<Oid, Oid>,
         updated_refs: HashMap<String, Oid>,
         warnings: Vec<String>,
+        backup_root: Option<String>,
     ) -> Self {
         Self {
             old_to_new,
             updated_refs,
             warnings,
+            backup_root,
         }
     }
 
@@ -34,6 +37,10 @@ impl RewriteResult {
 
     pub fn add_updated_ref<S: Into<String>>(&mut self, name: S, oid: Oid) {
         self.updated_refs.insert(name.into(), oid);
+    }
+
+    pub fn set_backup_root<S: Into<String>>(&mut self, root: S) {
+        self.backup_root = Some(root.into());
     }
 }
 
@@ -66,6 +73,12 @@ impl RewriteResult {
     #[getter]
     fn warnings(&self) -> Vec<String> {
         self.warnings.clone()
+    }
+
+    /// Backup reference root (e.g., refs/pygitx/backup/<timestamp>), if created.
+    #[getter]
+    fn backup_root(&self) -> Option<String> {
+        self.backup_root.clone()
     }
 }
 

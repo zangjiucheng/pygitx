@@ -104,3 +104,7 @@ Functions
 .. py:function:: pygitx.open_repo(path: str | os.PathLike[str]) -> Repo
 
    Open a git repository at ``path``. Supports ``pathlib.Path`` and ``~`` expansion.
+
+.. py:function:: pygitx.create_backup_ref(repo: Repo | str, prefix: str | None = None) -> str
+
+   Create backup refs under ``refs/pygitx/backup/<timestamp>`` for HEAD and its branch (if attached).

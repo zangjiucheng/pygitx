@@ -5,8 +5,9 @@ use globset::{Glob, GlobSet, GlobSetBuilder};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyString};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Thin wrapper around git2::Repository exposed to Python.
 #[pyclass(name = "Repo", unsendable)]
@@ -31,6 +32,19 @@ impl PyRepo {
 
 #[pymethods]
 impl PyRepo {
+    /// Create backup refs for the current HEAD and referenced branch (if any).
+    ///
+    /// Args:
+    ///     prefix (str | None): Base prefix for backups (default: "refs/pygitx/backup").
+    ///
+    /// Returns:
+    ///     str: Backup root reference (e.g., "refs/pygitx/backup/<timestamp>").
+    #[pyo3(text_signature = "($self, prefix=None)", signature = (prefix = None))]
+    pub fn create_backup_ref(&self, prefix: Option<&str>) -> PyResult<String> {
+        let refs = collect_head_refs(&self.repo)?;
+        create_backup_refs(&self.repo, &refs, prefix)
+    }
+
     /// Return the current HEAD commit information, or None if HEAD is unborn/detached without a commit.
     #[pyo3(text_signature = "($self)")]
     pub fn head(&self) -> PyResult<Option<PyCommitInfo>> {
@@ -132,6 +146,8 @@ impl PyRepo {
         }
 
         let head_commit = self.resolve_head_commit()?;
+        let backup_refs = collect_head_refs(&self.repo)?;
+        let backup_root = create_backup_refs(&self.repo, &backup_refs, None)?;
         let mut revwalk = self
             .repo
             .revwalk()
@@ -219,6 +235,7 @@ impl PyRepo {
             mapping,
             updated_refs,
             Vec::new(),
+            Some(backup_root),
         ))
     }
 
@@ -241,6 +258,8 @@ impl PyRepo {
     fn remove_path_internal(&mut self, path_pattern: &str) -> PyResult<RewriteResult> {
         let matcher = build_globset(path_pattern)?;
         let head_commit = self.resolve_head_commit()?;
+        let backup_refs = collect_head_refs(&self.repo)?;
+        let backup_root = create_backup_refs(&self.repo, &backup_refs, None)?;
         let mut revwalk = self
             .repo
             .revwalk()
@@ -318,6 +337,7 @@ impl PyRepo {
             mapping,
             updated_refs,
             Vec::new(),
+            Some(backup_root),
         ))
     }
 
@@ -380,6 +400,8 @@ impl PyRepo {
             ));
         }
 
+        let backup_refs = collect_head_refs(&self.repo)?;
+        let backup_root = create_backup_refs(&self.repo, &backup_refs, None)?;
         let old_oid = target_commit.id();
         let new_oid = target_commit
             .amend(None, None, None, None, Some(new_message), None)
@@ -391,6 +413,7 @@ impl PyRepo {
         for (name, oid) in updated_refs {
             result.add_updated_ref(name, oid);
         }
+        result.set_backup_root(backup_root);
 
         Ok(result)
     }
@@ -464,6 +487,8 @@ impl PyRepo {
             ));
         }
 
+        let backup_refs = collect_head_refs(&self.repo)?;
+        let backup_root = create_backup_refs(&self.repo, &backup_refs, None)?;
         let old_oid = target_commit.id();
         let author_time = target_commit.author().when();
         let new_author = Signature::new(new_name, new_email, &author_time)
@@ -495,6 +520,7 @@ impl PyRepo {
         for (name, oid) in updated_refs {
             result.add_updated_ref(name, oid);
         }
+        result.set_backup_root(backup_root);
 
         Ok(result)
     }
@@ -545,6 +571,8 @@ impl PyRepo {
                 err
             ))
         })?;
+        let backup_refs = collect_head_refs(&self.repo)?;
+        let backup_root = create_backup_refs(&self.repo, &backup_refs, None)?;
 
         // Walk first-parents to collect the range (newest -> oldest).
         let mut commits: Vec<Commit<'_>> = Vec::with_capacity(count);
@@ -624,6 +652,7 @@ impl PyRepo {
             mapping,
             updated_refs,
             Vec::new(),
+            Some(backup_root),
         ))
     }
 
@@ -698,6 +727,11 @@ impl PyRepo {
             .find_commit(onto_commit.id())
             .map_err(|err| py_git_err("failed to load onto commit", err))?;
         let mut last_new_oid: Option<Oid> = None;
+        let mut backup_refs = vec![(branch_name.clone(), branch_tip)];
+        if head_points_to_branch {
+            backup_refs.push(("HEAD".to_string(), branch_tip));
+        }
+        let backup_root = create_backup_refs(&self.repo, &backup_refs, None)?;
 
         for oid in to_replay {
             let commit = self
@@ -777,6 +811,7 @@ impl PyRepo {
             mapping,
             updated_refs,
             Vec::new(),
+            Some(backup_root),
         ))
     }
 }
@@ -854,6 +889,63 @@ fn update_head(repo: &Repository, new_oid: Oid) -> PyResult<HashMap<String, Oid>
     }
     updated_refs.insert("HEAD".to_string(), new_oid);
     Ok(updated_refs)
+}
+
+fn collect_head_refs(repo: &Repository) -> PyResult<Vec<(String, Oid)>> {
+    let mut refs = Vec::new();
+    let head_ref = repo.head().map_err(|err| match err.code() {
+        ErrorCode::UnbornBranch | ErrorCode::NotFound => {
+            PyValueError::new_err("repository has no HEAD commit")
+        }
+        _ => py_git_err("failed to read HEAD", err),
+    })?;
+    let head_commit = head_ref
+        .peel_to_commit()
+        .map_err(|err| py_git_err("failed to resolve HEAD to commit", err))?;
+    refs.push(("HEAD".to_string(), head_commit.id()));
+    if let Some(name) = head_ref.name().map(|s| s.to_string()) {
+        refs.push((name, head_commit.id()));
+    }
+    Ok(refs)
+}
+
+fn create_backup_refs(
+    repo: &Repository,
+    refs: &[(String, Oid)],
+    prefix: Option<&str>,
+) -> PyResult<String> {
+    let base = prefix.unwrap_or("refs/pygitx/backup").trim();
+    if base.is_empty() {
+        return Err(PyValueError::new_err("backup prefix cannot be empty"));
+    }
+    let base = if base.starts_with("refs/") {
+        base.to_string()
+    } else {
+        format!("refs/{}", base)
+    };
+    let base = base.trim_end_matches('/').to_string();
+    if refs.is_empty() {
+        return Err(PyValueError::new_err("no references to back up"));
+    }
+
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_else(|_| std::time::Duration::from_secs(0))
+        .as_secs();
+    let root = format!("{}/{}", base, now);
+
+    let mut seen = HashSet::new();
+    for (name, oid) in refs {
+        let sanitized = name.trim_start_matches('/');
+        if !seen.insert(sanitized.to_string()) {
+            continue;
+        }
+        let backup_name = format!("{}/{}", root, sanitized);
+        repo.reference(&backup_name, *oid, true, "pygitx backup")
+            .map_err(|err| py_git_err("failed to create backup ref", err))?;
+    }
+
+    Ok(root)
 }
 
 fn resolve_repo_path(py: Python<'_>, path: &Bound<'_, PyAny>) -> PyResult<String> {

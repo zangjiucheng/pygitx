@@ -5,8 +5,8 @@ help:
 	@echo "Targets:"
 	@echo "  venv     - create a local .venv using uv"
 	@echo "  install  - install build dependencies into .venv (via uv)"
-	@echo "  develop  - install pygitx in editable mode (via uv + maturin)"
-	@echo "  release  - build wheel (via uv + maturin)"
+	@echo "  develop  - install pygitx in editable mode (pip install -e .)"
+	@echo "  release  - build wheel (pip wheel . -w dist)"
 	@echo "  docs     - install docs/requirements.txt and build Sphinx docs to docs/_build/html (via uv)"
 	@echo "  test     - run cargo tests (including python-tests feature)"
 	@echo "  clean    - remove build artifacts and .venv"
@@ -20,10 +20,10 @@ install:
 	$(UV) pip install --upgrade pip setuptools wheel maturin
 
 develop:
-	maturin develop --features python-extension
+	pip install -e .
 
 release:
-	maturin build --features python-extension --release
+	pip wheel . -w dist
 
 docs:
 	$(UV) pip install -r docs/requirements.txt

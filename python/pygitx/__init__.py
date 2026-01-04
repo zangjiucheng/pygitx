@@ -9,7 +9,7 @@ from __future__ import annotations
 from importlib import import_module
 from typing import Optional
 
-_native = import_module("pygitx_native")
+_native = import_module("pygitx._native")
 
 # Re-export native classes for direct use.
 CommitInfo = _native.CommitInfo
@@ -22,6 +22,7 @@ __all__ = [
     "RewriteResult",
     "Repo",
     "open_repo",
+    "create_backup_ref",
     "head",
     "list_commits",
     "change_commit_message",
@@ -37,6 +38,11 @@ def _ensure_repo(repo: Repo | str) -> Repo:
     if isinstance(repo, Repo):
         return repo
     return open_repo(repo)
+
+
+def create_backup_ref(repo: Repo | str, prefix: str | None = None) -> str:
+    """Create backup refs for HEAD (and its branch, if attached)."""
+    return _ensure_repo(repo).create_backup_ref(prefix)
 
 
 def change_commit_message(repo: Repo | str, commit_id: str, new_message: str) -> RewriteResult:

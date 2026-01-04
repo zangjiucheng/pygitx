@@ -10,7 +10,7 @@ name = "pygitx_native"
 crate-type = ["cdylib", "lib"]
 
 [package.metadata.maturin]
-include = ["pygitx.pyi", "python/pygitx"]
+include = ["python/pygitx"]
 python-source = "python"
 
 [features]

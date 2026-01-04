@@ -125,6 +125,12 @@ fn change_commit_message_updates_head_commit() {
         result.updated_refs.get("HEAD"),
         Some(&amended_oid)
     );
+    let backup_root = result.backup_root.clone().expect("backup_root");
+    let backup_ref = py_repo
+        .repo
+        .find_reference(&format!("{}/HEAD", backup_root))
+        .unwrap();
+    assert_eq!(backup_ref.target(), Some(original_oid));
 
     let head_after = py_repo.head().unwrap().unwrap();
     assert_eq!(head_after.id, amended_oid.to_string());
@@ -431,6 +437,23 @@ fn remove_path_purges_files_from_history() {
             "rewritten commit {oid} still contains purged path"
         );
     }
+}
+
+#[test]
+fn create_backup_ref_creates_backup_refs() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    let head_oid = create_commit_on_ref(&repo, "HEAD", &[], "initial", "hello");
+    let py_repo = PyRepo { repo };
+
+    let root = py_repo.create_backup_ref(None).expect("backup creation");
+    assert!(root.starts_with("refs/pygitx/backup/"));
+    let head_backup = py_repo
+        .repo
+        .find_reference(&format!("{}/HEAD", root))
+        .unwrap();
+    assert_eq!(head_backup.target(), Some(head_oid));
 }
 
 fn init_python() {
