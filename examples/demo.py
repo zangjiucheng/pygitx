@@ -26,6 +26,10 @@ def run(cmd: list[str], cwd: Path) -> None:
     subprocess.run(cmd, cwd=cwd, check=True)
 
 
+def fmt_mapping(mapping: dict[str, str]) -> str:
+    return ", ".join(f"{old[:7]} -> {new[:7]}" for old, new in mapping.items()) or "none"
+
+
 def list_commits(repo: pygitx.Repo, max_commits: int | None) -> None:
     head = repo.head()
     print(f"HEAD: {head.id if head else 'None'}")
@@ -39,41 +43,42 @@ def amend_message(repo: pygitx.Repo, message: str) -> None:
     head = repo.head()
     if not head:
         raise SystemExit("No HEAD to amend")
-    updated = repo.change_commit_message(head.id, message)
-    print(f"Amended message: {head.id[:7]} -> {updated.id[:7]} [{updated.summary}]")
+    result = repo.change_commit_message(head.id, message)
+    head_update = result.updated_refs.get("HEAD")
+    print(f"Amended message mapping: {fmt_mapping(result.old_to_new)}")
+    if head_update:
+        print(f"HEAD now at {head_update[:7]}")
 
 
 def rewrite_author(repo: pygitx.Repo, name: str, email: str) -> None:
     head = repo.head()
     if not head:
         raise SystemExit("No HEAD to rewrite")
-    updated = repo.rewrite_author(head.id, name, email)
-    print(f"Amended author: {head.id[:7]} -> {updated.id[:7]} [{updated.author} <{updated.email}>]")
+    result = repo.rewrite_author(head.id, name, email)
+    head_update = result.updated_refs.get("HEAD")
+    print(f"Amended author mapping: {fmt_mapping(result.old_to_new)}")
+    if head_update:
+        print(f"HEAD now at {head_update[:7]}")
 
 
 def rebase_branch(repo: pygitx.Repo, branch: str, onto: str) -> None:
     mappings = repo.rebase_branch(branch, onto)
     print("Replayed commits:")
-    for old, new in mappings:
+    for old, new in mappings.old_to_new.items():
         print(f"  {old[:7]} -> {new[:7]}")
 
 
 def squash_last(repo: pygitx.Repo, count: int, mode: str, message: str | None) -> None:
     squashed = repo.squash_last(count, mode=mode, message=message)
-    print(f"Squashed top {count} commits -> {squashed.id[:7]}")
-    print(f"Summary: {squashed.summary}")
+    print(f"Squashed top {count} commits -> {fmt_mapping(squashed.old_to_new)}")
 
 def filter_commits(repo: pygitx.Repo, author: str | None, message_contains: str | None) -> None:
     mappings = repo.filter_commits(author=author, message_contains=message_contains)
-    print("Filtered commits (old -> new):")
-    for old, new in mappings:
-        print(f"  {old[:7]} -> {new[:7]}")
+    print(f"Filtered commits (old -> new): {fmt_mapping(mappings.old_to_new)}")
 
 def remove_path(repo: pygitx.Repo, path_pattern: str) -> None:
     mappings = repo.remove_path(path_pattern)
-    print(f"Purged '{path_pattern}' from history (old -> new):")
-    for old, new in mappings:
-        print(f"  {old[:7]} -> {new[:7]}")
+    print(f"Purged '{path_pattern}' from history (old -> new): {fmt_mapping(mappings.old_to_new)}")
 
 
 def parse_args() -> argparse.Namespace:

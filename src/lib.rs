@@ -6,12 +6,13 @@ mod repo;
 mod types;
 
 pub use crate::repo::{PyRepo, open_repo};
-pub use crate::types::PyCommitInfo;
+pub use crate::types::{PyCommitInfo, RewriteResult};
 
 #[pymodule]
 fn pygitx(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<PyRepo>()?;
     m.add_class::<PyCommitInfo>()?;
+    m.add_class::<RewriteResult>()?;
     m.add_function(wrap_pyfunction!(open_repo, m)?)?;
     Ok(())
 }

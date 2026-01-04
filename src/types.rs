@@ -1,5 +1,76 @@
-use git2::Commit;
+use git2::{Commit, Oid};
 use pyo3::prelude::*;
+use std::collections::HashMap;
+
+/// Result of a history rewrite operation.
+#[pyclass(name = "RewriteResult")]
+pub struct RewriteResult {
+    pub old_to_new: HashMap<Oid, Oid>,
+    pub updated_refs: HashMap<String, Oid>,
+    pub warnings: Vec<String>,
+}
+
+impl RewriteResult {
+    pub fn new() -> Self {
+        Self {
+            old_to_new: HashMap::new(),
+            updated_refs: HashMap::new(),
+            warnings: Vec::new(),
+        }
+    }
+
+    pub fn with_maps(
+        old_to_new: HashMap<Oid, Oid>,
+        updated_refs: HashMap<String, Oid>,
+        warnings: Vec<String>,
+    ) -> Self {
+        Self {
+            old_to_new,
+            updated_refs,
+            warnings,
+        }
+    }
+
+    pub fn add_mapping(&mut self, old: Oid, new: Oid) {
+        self.old_to_new.insert(old, new);
+    }
+
+    pub fn add_updated_ref<S: Into<String>>(&mut self, name: S, oid: Oid) {
+        self.updated_refs.insert(name.into(), oid);
+    }
+}
+
+#[pymethods]
+impl RewriteResult {
+    #[new]
+    fn py_new() -> Self {
+        RewriteResult::new()
+    }
+
+    /// Mapping of original commit ids to rewritten commit ids (as hex strings).
+    #[getter]
+    fn old_to_new(&self) -> HashMap<String, String> {
+        self.old_to_new
+            .iter()
+            .map(|(old, new)| (old.to_string(), new.to_string()))
+            .collect()
+    }
+
+    /// Mapping of refs that were updated to point at rewritten commits.
+    #[getter]
+    fn updated_refs(&self) -> HashMap<String, String> {
+        self.updated_refs
+            .iter()
+            .map(|(name, oid)| (name.clone(), oid.to_string()))
+            .collect()
+    }
+
+    /// Any non-fatal warnings encountered while rewriting.
+    #[getter]
+    fn warnings(&self) -> Vec<String> {
+        self.warnings.clone()
+    }
+}
 
 /// Information about a Git commit exposed to Python.
 #[pyclass(name = "CommitInfo")]

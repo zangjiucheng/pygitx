@@ -112,28 +112,37 @@ fn change_commit_message_updates_head_commit() {
     let mut py_repo = PyRepo { repo };
 
     let original = py_repo.head().unwrap().unwrap();
-    let amended = py_repo
+    let result = py_repo
         .change_commit_message(&original.id, "amended message")
         .unwrap();
-    assert_ne!(amended.id, original.id);
-    assert_eq!(amended.summary.as_deref(), Some("amended message"));
+    let original_oid = Oid::from_str(&original.id).unwrap();
+    let amended_oid = *result
+        .old_to_new
+        .get(&original_oid)
+        .expect("mapping for amended commit");
+    assert_ne!(amended_oid, original_oid);
+    assert_eq!(
+        result.updated_refs.get("HEAD"),
+        Some(&amended_oid)
+    );
 
     let head_after = py_repo.head().unwrap().unwrap();
-    assert_eq!(head_after.id, amended.id);
+    assert_eq!(head_after.id, amended_oid.to_string());
 
     let original_commit = py_repo
         .repo
-        .find_commit(Oid::from_str(&original.id).unwrap())
+        .find_commit(original_oid)
         .unwrap();
     let amended_commit = py_repo
         .repo
-        .find_commit(Oid::from_str(&amended.id).unwrap())
+        .find_commit(amended_oid)
         .unwrap();
     assert_eq!(original_commit.tree_id(), amended_commit.tree_id());
     assert_eq!(
         original_commit.parent_count(),
         amended_commit.parent_count()
     );
+    assert_eq!(amended_commit.summary(), Some("amended message"));
 }
 
 #[test]
@@ -168,13 +177,18 @@ fn rewrite_author_updates_head() {
     let original = py_repo.head().unwrap().unwrap();
     assert_eq!(original.author, "PyGitX");
 
-    let amended = py_repo
+    let result = py_repo
         .rewrite_author(&original.id, "New Name", "new@example.com", Some(true))
         .unwrap();
-    assert_eq!(amended.author, "New Name");
+    let original_oid = Oid::from_str(&original.id).unwrap();
+    let amended_oid = *result
+        .old_to_new
+        .get(&original_oid)
+        .expect("mapping for rewritten author");
+    assert_eq!(result.updated_refs.get("HEAD"), Some(&amended_oid));
 
     let head_after = py_repo.head().unwrap().unwrap();
-    assert_eq!(head_after.id, amended.id);
+    assert_eq!(head_after.id, amended_oid.to_string());
     assert_eq!(head_after.author, "New Name");
 }
 
@@ -235,8 +249,12 @@ fn rebase_branch_replays_commits() {
     let mappings = py_repo
         .rebase_branch("feature", &base2.to_string())
         .expect("rebase should succeed");
-    assert_eq!(mappings.len(), 1);
-    assert_eq!(mappings[0].0, feature1.to_string());
+    assert_eq!(mappings.old_to_new.len(), 1);
+    let new_oid = mappings
+        .old_to_new
+        .get(&feature1)
+        .copied()
+        .expect("mapping for feature commit");
 
     // Feature branch should now point to the new tip.
     let feature_branch = py_repo
@@ -244,7 +262,14 @@ fn rebase_branch_replays_commits() {
         .find_branch("feature", BranchType::Local)
         .unwrap();
     let feature_head = feature_branch.into_reference().target().unwrap();
-    assert_eq!(feature_head.to_string(), mappings[0].1);
+    assert_eq!(feature_head, new_oid);
+    assert_eq!(
+        mappings
+            .updated_refs
+            .get("refs/heads/feature")
+            .copied(),
+        Some(new_oid)
+    );
 }
 
 #[test]
@@ -257,14 +282,20 @@ fn squash_last_combines_commits() {
     create_commit_on_ref(&repo, "HEAD", &[second], "third", "c");
     let mut py_repo = PyRepo { repo };
 
+    let head_before = py_repo.head().unwrap().unwrap();
     let squashed = py_repo.squash_last(3, Some("squash"), None).unwrap();
     let head = py_repo.head().unwrap().unwrap();
-    assert_eq!(head.id, squashed.id);
+    let new_oid = Oid::from_str(&head.id).unwrap();
+    let original_head_oid = Oid::from_str(&head_before.id).unwrap();
+    assert_eq!(
+        squashed.old_to_new.get(&original_head_oid),
+        Some(&new_oid)
+    );
     assert_eq!(py_repo.list_commits(Some(10)).unwrap().len(), 1);
 
     let commit = py_repo
         .repo
-        .find_commit(Oid::from_str(&squashed.id).unwrap())
+        .find_commit(new_oid)
         .unwrap();
     let message = commit.message().unwrap_or_default();
     assert!(message.contains("first"));
@@ -282,13 +313,23 @@ fn squash_last_fixup_uses_oldest_message() {
     create_commit_on_ref(&repo, "HEAD", &[base], "tip", "tip");
     let mut py_repo = PyRepo { repo };
 
+    let head_before = py_repo.head().unwrap().unwrap();
     let squashed = py_repo.squash_last(2, Some("fixup"), None).unwrap();
+    let head = py_repo.head().unwrap().unwrap();
+    let new_oid = Oid::from_str(&head.id).unwrap();
     let commit = py_repo
         .repo
-        .find_commit(Oid::from_str(&squashed.id).unwrap())
+        .find_commit(new_oid)
         .unwrap();
     assert_eq!(commit.summary(), Some("base"));
     assert_eq!(commit.parent_count(), 0);
+    assert_eq!(
+        squashed
+            .old_to_new
+            .get(&Oid::from_str(&head_before.id).unwrap())
+            .copied(),
+        Some(new_oid)
+    );
 }
 
 #[test]
@@ -301,19 +342,19 @@ fn filter_commits_drops_matching_and_reparents() {
     let tip = create_commit_on_ref(&repo, "HEAD", &[middle], "final", "c");
     let mut py_repo = PyRepo { repo };
 
-    let mappings = Python::with_gil(|py| py_repo.filter_commits(py, None, Some("WIP")))
+    let mappings = Python::attach(|py| py_repo.filter_commits(py, None, Some("WIP")))
         .expect("filter should succeed");
-    let map: std::collections::HashMap<String, String> = mappings.into_iter().collect();
+    let map = mappings.old_to_new;
 
     // Dropped commit should map to its parent's rewritten id.
-    let base_new = map.get(&base.to_string()).expect("base mapping");
-    let middle_new = map.get(&middle.to_string()).expect("middle mapping");
+    let base_new = map.get(&base).expect("base mapping");
+    let middle_new = map.get(&middle).expect("middle mapping");
     assert_eq!(middle_new, base_new);
 
     // Head should point to rewritten tip; commit count should shrink by one.
     let head = py_repo.head().unwrap().unwrap();
-    let tip_new = map.get(&tip.to_string()).expect("tip mapping");
-    assert_eq!(&head.id, tip_new);
+    let tip_new = map.get(&tip).expect("tip mapping");
+    assert_eq!(&head.id, &tip_new.to_string());
     assert_eq!(py_repo.list_commits(None).unwrap().len(), 2);
 }
 
@@ -335,18 +376,18 @@ fn filter_commits_matches_author_case_insensitive() {
     let tip = create_commit_on_ref(&repo, "HEAD", &[special], "final", "c");
     let mut py_repo = PyRepo { repo };
 
-    let mappings = Python::with_gil(|py| py_repo.filter_commits(py, Some("jiucheng"), None))
+    let mappings = Python::attach(|py| py_repo.filter_commits(py, Some("jiucheng"), None))
         .expect("filter should succeed");
-    let map: std::collections::HashMap<String, String> = mappings.into_iter().collect();
+    let map = mappings.old_to_new;
 
     // Special commit should be dropped and reparented.
-    let base_new = map.get(&base.to_string()).expect("base mapping");
-    let special_new = map.get(&special.to_string()).expect("special mapping");
+    let base_new = map.get(&base).expect("base mapping");
+    let special_new = map.get(&special).expect("special mapping");
     assert_eq!(special_new, base_new);
 
     let head = py_repo.head().unwrap().unwrap();
-    let tip_new = map.get(&tip.to_string()).expect("tip mapping");
-    assert_eq!(&head.id, tip_new);
+    let tip_new = map.get(&tip).expect("tip mapping");
+    assert_eq!(&head.id, &tip_new.to_string());
     assert_eq!(py_repo.list_commits(None).unwrap().len(), 2);
 }
 
@@ -373,22 +414,21 @@ fn remove_path_purges_files_from_history() {
     );
     let mut py_repo = PyRepo { repo };
 
-    let mappings = Python::with_gil(|py| py_repo.remove_path(py, "secrets/*.txt"))
+    let mappings = Python::attach(|py| py_repo.remove_path(py, "secrets/*.txt"))
         .expect("remove_path should succeed");
-    let map: std::collections::HashMap<String, String> = mappings.into_iter().collect();
+    let map = mappings.old_to_new;
 
     let head = py_repo.head().unwrap().unwrap();
-    let tip_new = map.get(&tip.to_string()).expect("tip mapping");
-    assert_eq!(&head.id, tip_new);
+    let tip_new = map.get(&tip).expect("tip mapping");
+    assert_eq!(&head.id, &tip_new.to_string());
     assert_eq!(py_repo.list_commits(None).unwrap().len(), 2);
 
     // All rewritten commits should no longer contain the secret path.
     let repo = &py_repo.repo;
-    for oid_str in map.values() {
-        let oid = Oid::from_str(oid_str).unwrap();
+    for oid in map.values() {
         assert!(
-            !tree_has_path(repo, oid, Path::new("secrets/secret.txt")),
-            "rewritten commit {oid_str} still contains purged path"
+            !tree_has_path(repo, *oid, Path::new("secrets/secret.txt")),
+            "rewritten commit {oid} still contains purged path"
         );
     }
 }

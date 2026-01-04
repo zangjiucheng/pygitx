@@ -12,6 +12,7 @@ Cross-platform Git history access implemented in Rust with a Python API via PyO3
 - `Repo.squash_last(count, mode="squash", message=None)` to squash the latest commits (or fixup-style).
 - `Repo.filter_commits(author=None, message_contains=None)` to drop commits matching simple criteria (case-insensitive author/email/message).
 - `Repo.remove_path(path_pattern)` to purge a path (glob) from all commits.
+- Rewrite operations return a `RewriteResult` with `old_to_new` commit ids, `updated_refs` (e.g., HEAD/branch), and any `warnings`.
 - Vendored libgit2 for predictable, cross-platform builds.
 
 ## Quick start (editable install with uv)
@@ -54,30 +55,31 @@ for c in repo.list_commits(max=5):
 
 # Amending the latest commit message (rewrites history)
 if head:
-    updated = repo.change_commit_message(head.id, "new message for HEAD")
-    print("Amended HEAD:", updated.id, updated.summary)
+    result = repo.change_commit_message(head.id, "new message for HEAD")
+    print("Amended HEAD mapping:", result.old_to_new)
+    print("Updated refs:", result.updated_refs)
 
 # Rewriting author/committer on HEAD (also rewrites history)
 if head:
-    updated = repo.rewrite_author(head.id, "New Name", "new@example.com")
-    print("Amended author:", updated.id, updated.author, updated.email)
+    result = repo.rewrite_author(head.id, "New Name", "new@example.com")
+    print("Author rewrite mapping:", result.old_to_new)
 
 # Squash the last 3 commits (keep all messages); use mode="fixup" to keep only the oldest message
 if head:
     squashed = repo.squash_last(3)
-    print("Squashed tip:", squashed.id, squashed.summary)
+    print("Squashed mapping:", squashed.old_to_new)
 
 # Rebase a branch onto a new base (pick-only)
 updated_commits = repo.rebase_branch("feature", "main")
-print("Rebased commits:", updated_commits)
+print("Rebased commits:", updated_commits.old_to_new)
 
 # Drop commits by author or message substring
 filtered = repo.filter_commits(author="bad actor", message_contains="wip")
-print("Filtered mapping:", filtered)
+print("Filtered mapping:", filtered.old_to_new)
 
 # Remove a path across history (glob)
 purged = repo.remove_path("secrets/*.txt")
-print("Purged path mapping:", purged)
+print("Purged path mapping:", purged.old_to_new)
 ```
 
 Example script: `examples/demo.py` (see `--help` for options to generate a demo repo, list commits, amend/rewrite, or rebase).

@@ -1,5 +1,5 @@
 use crate::errors::py_git_err;
-use crate::types::PyCommitInfo;
+use crate::types::{PyCommitInfo, RewriteResult};
 use git2::{BranchType, Commit, ErrorClass, ErrorCode, ObjectType, Oid, Repository, Signature, Tree};
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use pyo3::exceptions::PyValueError;
@@ -102,7 +102,7 @@ impl PyRepo {
     ///     message_contains (str | None): Drop commits whose message contains this substring.
     ///
     /// Returns:
-    ///     list[tuple[str, str]]: Mapping of old commit ids to new commit ids (dropped commits map to their parent).
+    ///     RewriteResult: Mapping of old commit ids to new commit ids (dropped commits map to their parent).
     ///
     /// Notes:
     ///     - Currently supports linear history (merge commits are rejected).
@@ -116,7 +116,7 @@ impl PyRepo {
         py: Python<'_>,
         author: Option<&str>,
         message_contains: Option<&str>,
-    ) -> PyResult<Vec<(String, String)>> {
+    ) -> PyResult<RewriteResult> {
         py.detach(move || self.filter_commits_internal(author, message_contains))
     }
 
@@ -124,7 +124,7 @@ impl PyRepo {
         &mut self,
         author: Option<&str>,
         message_contains: Option<&str>,
-    ) -> PyResult<Vec<(String, String)>> {
+    ) -> PyResult<RewriteResult> {
         if author.is_none() && message_contains.is_none() {
             return Err(PyValueError::new_err(
                 "must provide at least one filter: author or message_contains",
@@ -141,7 +141,6 @@ impl PyRepo {
             .map_err(|err| py_git_err("failed to start revwalk from HEAD", err))?;
         let _ = revwalk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::REVERSE);
 
-        let mut rewritten = Vec::new();
         let mut mapping: HashMap<Oid, Oid> = HashMap::new();
 
         for oid_result in revwalk {
@@ -189,7 +188,6 @@ impl PyRepo {
                 }
                 let replacement = new_parents[0].id();
                 mapping.insert(commit.id(), replacement);
-                rewritten.push((commit.id().to_string(), replacement.to_string()));
                 continue;
             }
 
@@ -210,15 +208,18 @@ impl PyRepo {
                 .map_err(|err| py_git_err("failed to create rewritten commit", err))?;
 
             mapping.insert(commit.id(), new_oid);
-            rewritten.push((commit.id().to_string(), new_oid.to_string()));
         }
 
         let new_head_oid = mapping
             .get(&head_commit.id())
             .ok_or_else(|| PyValueError::new_err("failed to resolve rewritten HEAD"))?;
-        update_head(&self.repo, *new_head_oid)?;
+        let updated_refs = update_head(&self.repo, *new_head_oid)?;
 
-        Ok(rewritten)
+        Ok(RewriteResult::with_maps(
+            mapping,
+            updated_refs,
+            Vec::new(),
+        ))
     }
 
     /// Remove a path (glob) from all commits reachable from HEAD and rewrite history.
@@ -227,17 +228,17 @@ impl PyRepo {
     ///     path_pattern (str): Glob-style pattern relative to repo root (e.g., "secrets.env" or "config/*.yaml").
     ///
     /// Returns:
-    ///     list[tuple[str, str]]: Mapping of old commit ids to new commit ids (rewritten commits).
+    ///     RewriteResult: Mapping of old commit ids to new commit ids (rewritten commits).
     ///
     /// Notes:
     ///     - Currently supports linear history (merge commits are rejected).
     ///     - This rewrites history; branch ref/HEAD are updated to the rewritten tip.
     #[pyo3(text_signature = "($self, path_pattern)")]
-    pub fn remove_path(&mut self, py: Python<'_>, path_pattern: &str) -> PyResult<Vec<(String, String)>> {
+    pub fn remove_path(&mut self, py: Python<'_>, path_pattern: &str) -> PyResult<RewriteResult> {
         py.detach(move || self.remove_path_internal(path_pattern))
     }
 
-    fn remove_path_internal(&mut self, path_pattern: &str) -> PyResult<Vec<(String, String)>> {
+    fn remove_path_internal(&mut self, path_pattern: &str) -> PyResult<RewriteResult> {
         let matcher = build_globset(path_pattern)?;
         let head_commit = self.resolve_head_commit()?;
         let mut revwalk = self
@@ -249,7 +250,6 @@ impl PyRepo {
             .map_err(|err| py_git_err("failed to start revwalk from HEAD", err))?;
         let _ = revwalk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::REVERSE);
 
-        let mut rewritten = Vec::new();
         let mut mapping: HashMap<Oid, Oid> = HashMap::new();
 
         for oid_result in revwalk {
@@ -307,15 +307,18 @@ impl PyRepo {
                 .map_err(|err| py_git_err("failed to create rewritten commit", err))?;
 
             mapping.insert(commit.id(), new_oid);
-            rewritten.push((commit.id().to_string(), new_oid.to_string()));
         }
 
         let new_head_oid = mapping
             .get(&head_commit.id())
             .ok_or_else(|| PyValueError::new_err("failed to resolve rewritten HEAD"))?;
-        update_head(&self.repo, *new_head_oid)?;
+        let updated_refs = update_head(&self.repo, *new_head_oid)?;
 
-        Ok(rewritten)
+        Ok(RewriteResult::with_maps(
+            mapping,
+            updated_refs,
+            Vec::new(),
+        ))
     }
 
     /// Amend the message of the HEAD commit.
@@ -325,7 +328,7 @@ impl PyRepo {
     ///     new_message (str): Replacement commit message.
     ///
     /// Returns:
-    ///     CommitInfo: The amended commit (with a new id).
+    ///     RewriteResult: Mapping of rewritten commits and updated refs (HEAD/branch).
     ///
     /// Notes:
     ///     - This rewrites history; descendants will now point to a new commit.
@@ -335,7 +338,7 @@ impl PyRepo {
         &mut self,
         commit_id: &str,
         new_message: &str,
-    ) -> PyResult<PyCommitInfo> {
+    ) -> PyResult<RewriteResult> {
         if new_message.trim().is_empty() {
             return Err(PyValueError::new_err("new commit message cannot be empty"));
         }
@@ -377,15 +380,19 @@ impl PyRepo {
             ));
         }
 
+        let old_oid = target_commit.id();
         let new_oid = target_commit
-            .amend(Some("HEAD"), None, None, None, Some(new_message), None)
+            .amend(None, None, None, None, Some(new_message), None)
             .map_err(|err| py_git_err("failed to amend commit message", err))?;
-        let amended = self
-            .repo
-            .find_commit(new_oid)
-            .map_err(|err| py_git_err("failed to load amended commit", err))?;
 
-        Ok(PyCommitInfo::from_commit(&amended))
+        let updated_refs = update_head(&self.repo, new_oid)?;
+        let mut result = RewriteResult::new();
+        result.add_mapping(old_oid, new_oid);
+        for (name, oid) in updated_refs {
+            result.add_updated_ref(name, oid);
+        }
+
+        Ok(result)
     }
 
     /// Rewrite the author (and optionally committer) of the HEAD commit.
@@ -397,7 +404,7 @@ impl PyRepo {
     ///     update_committer (bool): If True, also update committer to the same identity (default True).
     ///
     /// Returns:
-    ///     CommitInfo: The amended commit (with a new id).
+    ///     RewriteResult: Mapping of rewritten commits and updated refs (HEAD/branch).
     ///
     /// Notes:
     ///     - This rewrites history; descendants will now point to a new commit.
@@ -412,7 +419,7 @@ impl PyRepo {
         new_name: &str,
         new_email: &str,
         update_committer: Option<bool>,
-    ) -> PyResult<PyCommitInfo> {
+    ) -> PyResult<RewriteResult> {
         if new_name.trim().is_empty() {
             return Err(PyValueError::new_err("new author name cannot be empty"));
         }
@@ -457,6 +464,7 @@ impl PyRepo {
             ));
         }
 
+        let old_oid = target_commit.id();
         let author_time = target_commit.author().when();
         let new_author = Signature::new(new_name, new_email, &author_time)
             .map_err(|err| PyValueError::new_err(format!("invalid author identity: {}", err)))?;
@@ -472,7 +480,7 @@ impl PyRepo {
 
         let new_oid = target_commit
             .amend(
-                Some("HEAD"),
+                None,
                 Some(&new_author),
                 committer_sig.as_ref(),
                 None,
@@ -481,12 +489,14 @@ impl PyRepo {
             )
             .map_err(|err| py_git_err("failed to rewrite author", err))?;
 
-        let amended = self
-            .repo
-            .find_commit(new_oid)
-            .map_err(|err| py_git_err("failed to load amended commit", err))?;
+        let updated_refs = update_head(&self.repo, new_oid)?;
+        let mut result = RewriteResult::new();
+        result.add_mapping(old_oid, new_oid);
+        for (name, oid) in updated_refs {
+            result.add_updated_ref(name, oid);
+        }
 
-        Ok(PyCommitInfo::from_commit(&amended))
+        Ok(result)
     }
 
     /// Squash the last N commits into a single commit (optionally fixup-style).
@@ -497,7 +507,7 @@ impl PyRepo {
     ///     message (str | None): Optional explicit commit message for the squashed commit.
     ///
     /// Returns:
-    ///     CommitInfo: The new squashed commit (with a new id).
+    ///     RewriteResult: Mapping of squashed commits to the new commit and updated refs.
     ///
     /// Notes:
     ///     - Only linear history is supported (merge commits in the range are rejected).
@@ -508,7 +518,7 @@ impl PyRepo {
         count: usize,
         mode: Option<&str>,
         message: Option<&str>,
-    ) -> PyResult<PyCommitInfo> {
+    ) -> PyResult<RewriteResult> {
         if count < 2 {
             return Err(PyValueError::new_err(
                 "count must be at least 2 to squash commits",
@@ -604,35 +614,17 @@ impl PyRepo {
             )
             .map_err(|err| py_git_err("failed to create squashed commit", err))?;
 
-        // Update ref/HEAD to the rewritten commit.
-        match head_ref.resolve() {
-            Ok(mut resolved) => {
-                let name = resolved.name().map(|s| s.to_string());
-                if let Some(name) = name {
-                    resolved
-                        .set_target(new_oid, "squash: update ref")
-                        .map_err(|err| py_git_err("failed to update ref after squash", err))?;
-                    self.repo
-                        .set_head(&name)
-                        .map_err(|err| py_git_err("failed to update HEAD after squash", err))?;
-                } else {
-                    self.repo.set_head_detached(new_oid).map_err(|err| {
-                        py_git_err("failed to detach HEAD to squashed commit", err)
-                    })?;
-                }
-            }
-            Err(_) => {
-                self.repo
-                    .set_head_detached(new_oid)
-                    .map_err(|err| py_git_err("failed to detach HEAD to squashed commit", err))?;
-            }
+        let updated_refs = update_head(&self.repo, new_oid)?;
+        let mut mapping = HashMap::new();
+        for commit in &commits {
+            mapping.insert(commit.id(), new_oid);
         }
 
-        let new_commit = self
-            .repo
-            .find_commit(new_oid)
-            .map_err(|err| py_git_err("failed to load squashed commit", err))?;
-        Ok(PyCommitInfo::from_commit(&new_commit))
+        Ok(RewriteResult::with_maps(
+            mapping,
+            updated_refs,
+            Vec::new(),
+        ))
     }
 
     /// Rebase a branch onto a new base (non-interactive, pick-only).
@@ -642,13 +634,13 @@ impl PyRepo {
     ///     onto (str): Commit-ish to rebase onto (e.g., "main" or a commit id).
     ///
     /// Returns:
-    ///     list[tuple[str, str]]: Mapping of old commit ids to new commit ids in replay order.
+    ///     RewriteResult: Mapping of old commit ids to new commit ids in replay order.
     ///
     /// Notes:
     ///     - If conflicts occur, the rebase aborts and an error is raised.
     ///     - This rewrites history; branch ref is updated to the new tip.
     #[pyo3(text_signature = "($self, branch, onto)")]
-    pub fn rebase_branch(&mut self, branch: &str, onto: &str) -> PyResult<Vec<(String, String)>> {
+    pub fn rebase_branch(&mut self, branch: &str, onto: &str) -> PyResult<RewriteResult> {
         let branch_ref = self
             .repo
             .find_branch(branch, BranchType::Local)
@@ -700,11 +692,12 @@ impl PyRepo {
             to_replay.push(oid);
         }
 
-        let mut mappings = Vec::new();
+        let mut mapping: HashMap<Oid, Oid> = HashMap::new();
         let mut current_tip = self
             .repo
             .find_commit(onto_commit.id())
             .map_err(|err| py_git_err("failed to load onto commit", err))?;
+        let mut last_new_oid: Option<Oid> = None;
 
         for oid in to_replay {
             let commit = self
@@ -756,29 +749,35 @@ impl PyRepo {
                 )
                 .map_err(|err| py_git_err("failed to create commit during rebase", err))?;
 
-            mappings.push((commit.id().to_string(), new_oid.to_string()));
+            mapping.insert(commit.id(), new_oid);
+            last_new_oid = Some(new_oid);
             current_tip = self
                 .repo
                 .find_commit(new_oid)
                 .map_err(|err| py_git_err("failed to load rewritten commit", err))?;
         }
 
-        if let Some((_, new_oid_str)) = mappings.last() {
-            let new_oid = Oid::from_str(new_oid_str)
-                .map_err(|_| PyValueError::new_err("invalid new oid produced"))?;
+        let mut updated_refs = HashMap::new();
+        if let Some(new_oid) = last_new_oid {
             let mut reference = branch_ref.into_reference();
             reference
                 .set_target(new_oid, "rebase: update branch")
                 .map_err(|err| py_git_err("failed to update branch after rebase", err))?;
+            updated_refs.insert(branch_name.clone(), new_oid);
 
             if head_points_to_branch {
                 self.repo
                     .set_head(&branch_name)
                     .map_err(|err| py_git_err("failed to update HEAD after rebase", err))?;
+                updated_refs.insert("HEAD".to_string(), new_oid);
             }
         }
 
-        Ok(mappings)
+        Ok(RewriteResult::with_maps(
+            mapping,
+            updated_refs,
+            Vec::new(),
+        ))
     }
 }
 
@@ -831,7 +830,8 @@ fn compose_squash_message(commits: &[Commit<'_>], mode: SquashMode) -> String {
     }
 }
 
-fn update_head(repo: &Repository, new_oid: Oid) -> PyResult<()> {
+fn update_head(repo: &Repository, new_oid: Oid) -> PyResult<HashMap<String, Oid>> {
+    let mut updated_refs = HashMap::new();
     match repo.head() {
         Ok(mut head_ref) => {
             let name = head_ref.name().map(|s| s.to_string());
@@ -841,6 +841,7 @@ fn update_head(repo: &Repository, new_oid: Oid) -> PyResult<()> {
                     .map_err(|err| py_git_err("failed to update ref after rewrite", err))?;
                 repo.set_head(&name)
                     .map_err(|err| py_git_err("failed to update HEAD after rewrite", err))?;
+                updated_refs.insert(name, new_oid);
             } else {
                 repo.set_head_detached(new_oid)
                     .map_err(|err| py_git_err("failed to detach HEAD to rewritten commit", err))?;
@@ -851,7 +852,8 @@ fn update_head(repo: &Repository, new_oid: Oid) -> PyResult<()> {
                 .map_err(|err| py_git_err("failed to detach HEAD to rewritten commit", err))?;
         }
     }
-    Ok(())
+    updated_refs.insert("HEAD".to_string(), new_oid);
+    Ok(updated_refs)
 }
 
 fn resolve_repo_path(py: Python<'_>, path: &Bound<'_, PyAny>) -> PyResult<String> {
