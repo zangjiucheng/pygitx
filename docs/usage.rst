@@ -81,7 +81,33 @@ Replay a branch on top of a new base (pick-only):
 Conflicts will abort the rebase and raise an error; resolve manually and retry
 if needed.
 
+Filtering history
+-----------------
+
+Drop commits by author or message substring:
+
+.. code-block:: python
+
+   mapping = repo.filter_commits(author="Bad Actor", message_contains="WIP")
+   print(mapping)
+
+Remove a path (glob) from all commits:
+
+.. code-block:: python
+
+   purged = repo.remove_path("secrets/*.txt")
+   print(purged)
+
+Note: Filtering/removal currently supports linear history (merge commits are rejected).
+
 Example script
 --------------
 
 `examples/demo.py` bundles the above: generate a repo, list commits, amend messages, rewrite author, and rebase (run with ``--help``).
+
+Planned: Version 0.6 (History Filtering and Commit Selection)
+-------------------------------------------------------------
+- Drop commits by criteria (author/message/etc.) and re-parent children to keep the DAG consistent.
+- Remove or replace paths/text across history (e.g., purge files/secrets from all commits).
+- Compose multiple filters in one pass with an old-to-new commit map; traverse in topological order for determinism.
+- Potential performance prep: parallel metadata scans where safe; commit rewriting remains ordered.

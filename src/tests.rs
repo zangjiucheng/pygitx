@@ -291,12 +291,154 @@ fn squash_last_fixup_uses_oldest_message() {
     assert_eq!(commit.parent_count(), 0);
 }
 
+#[test]
+fn filter_commits_drops_matching_and_reparents() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    let base = create_commit_on_ref(&repo, "HEAD", &[], "base", "a");
+    let middle = create_commit_on_ref(&repo, "HEAD", &[base], "WIP change", "b");
+    let tip = create_commit_on_ref(&repo, "HEAD", &[middle], "final", "c");
+    let mut py_repo = PyRepo { repo };
+
+    let mappings = py_repo
+        .filter_commits(None, Some("WIP"))
+        .expect("filter should succeed");
+    let map: std::collections::HashMap<String, String> = mappings.into_iter().collect();
+
+    // Dropped commit should map to its parent's rewritten id.
+    let base_new = map.get(&base.to_string()).expect("base mapping");
+    let middle_new = map.get(&middle.to_string()).expect("middle mapping");
+    assert_eq!(middle_new, base_new);
+
+    // Head should point to rewritten tip; commit count should shrink by one.
+    let head = py_repo.head().unwrap().unwrap();
+    let tip_new = map.get(&tip.to_string()).expect("tip mapping");
+    assert_eq!(&head.id, tip_new);
+    assert_eq!(py_repo.list_commits(None).unwrap().len(), 2);
+}
+
+#[test]
+fn remove_path_purges_files_from_history() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    let base = create_commit_on_ref_with_path(
+        &repo,
+        "HEAD",
+        &[],
+        "secrets/secret.txt",
+        "add secret",
+        "topsecret",
+    );
+    let tip = create_commit_on_ref_with_path(
+        &repo,
+        "HEAD",
+        &[base],
+        "file.txt",
+        "modify other file",
+        "hello",
+    );
+    let mut py_repo = PyRepo { repo };
+
+    let mappings = py_repo
+        .remove_path("secrets/*.txt")
+        .expect("remove_path should succeed");
+    let map: std::collections::HashMap<String, String> = mappings.into_iter().collect();
+
+    let head = py_repo.head().unwrap().unwrap();
+    let tip_new = map.get(&tip.to_string()).expect("tip mapping");
+    assert_eq!(&head.id, tip_new);
+    assert_eq!(py_repo.list_commits(None).unwrap().len(), 2);
+
+    // All rewritten commits should no longer contain the secret path.
+    let repo = &py_repo.repo;
+    for oid_str in map.values() {
+        let oid = Oid::from_str(oid_str).unwrap();
+        assert!(
+            !tree_has_path(repo, oid, Path::new("secrets/secret.txt")),
+            "rewritten commit {oid_str} still contains purged path"
+        );
+    }
+}
+
 fn init_python() {
     // Initialize the embedded Python interpreter once for PyO3-bound types used in tests.
     static INIT: std::sync::Once = std::sync::Once::new();
     INIT.call_once(|| {
+        if let Some((base_prefix, version)) = python_base_from_env() {
+            unsafe {
+                std::env::set_var("PYTHONHOME", &base_prefix);
+            }
+            if std::env::var_os("PYTHONPATH").is_none() {
+                let mut stdlib = base_prefix.clone();
+                stdlib.push("lib");
+                stdlib.push(format!("python{}", version));
+                let mut site = stdlib.clone();
+                site.push("site-packages");
+                let path_val = format!(
+                    "{}:{}",
+                    stdlib.to_string_lossy(),
+                    site.to_string_lossy()
+                );
+                unsafe {
+                    std::env::set_var("PYTHONPATH", path_val);
+                }
+            }
+        }
         Python::initialize();
     });
+}
+
+fn python_base_from_env() -> Option<(std::path::PathBuf, String)> {
+    if let Some(home) = std::env::var_os("PYTHONHOME") {
+        let ver = python_version_hint();
+        return Some((std::path::PathBuf::from(home), ver));
+    }
+
+    // Prefer explicit VIRTUAL_ENV.
+    let venv_dir = std::env::var_os("VIRTUAL_ENV").map(std::path::PathBuf::from).or_else(|| {
+        std::env::current_dir()
+            .ok()
+            .map(|cwd| cwd.join(".venv"))
+            .filter(|p| p.exists())
+    });
+
+    let venv = venv_dir?;
+    if let Some((base, ver)) = parse_pyvenv_cfg(&venv) {
+        return Some((base, ver));
+    }
+
+    let ver = python_version_hint();
+    Some((venv, ver))
+}
+
+fn parse_pyvenv_cfg(venv: &std::path::Path) -> Option<(std::path::PathBuf, String)> {
+    let cfg = venv.join("pyvenv.cfg");
+    let contents = std::fs::read_to_string(cfg).ok()?;
+    let mut home_line = None;
+    let mut version_line = None;
+    for line in contents.lines() {
+        if let Some(rest) = line.strip_prefix("home =") {
+            home_line = Some(rest.trim().to_string());
+        }
+        if let Some(rest) = line.strip_prefix("version =") {
+            version_line = Some(rest.trim().to_string());
+        }
+    }
+    let home = home_line?;
+    let mut base = std::path::PathBuf::from(home);
+    // pyvenv home usually points to .../bin; step up one to the prefix.
+    if base.ends_with("bin") {
+        base.pop();
+    }
+    let version = version_line.unwrap_or_else(python_version_hint);
+    Some((base, version))
+}
+
+fn python_version_hint() -> String {
+    // Default to 3.11 if we cannot infer; used only to build PYTHONPATH.
+    "3.11".to_string()
 }
 
 fn create_commit_on_ref(
@@ -320,6 +462,9 @@ fn create_commit_on_ref_with_path(
     let sig = Signature::now("PyGitX", "pygitx@example.com").unwrap();
     let workdir = repo.workdir().expect("repo should have workdir");
     let file_path = workdir.join(path);
+    if let Some(parent) = file_path.parent() {
+        fs::create_dir_all(parent).unwrap();
+    }
     fs::write(&file_path, content).unwrap();
 
     let mut index = repo.index().unwrap();
@@ -336,4 +481,10 @@ fn create_commit_on_ref_with_path(
 
     repo.commit(Some(reference), &sig, &sig, message, &tree, &parent_refs)
         .unwrap()
+}
+
+fn tree_has_path(repo: &Repository, commit_oid: Oid, path: &Path) -> bool {
+    let commit = repo.find_commit(commit_oid).unwrap();
+    let tree = commit.tree().unwrap();
+    tree.get_path(path).is_ok()
 }

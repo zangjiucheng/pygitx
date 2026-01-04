@@ -1,5 +1,10 @@
 """
 Helpers to generate sample git repositories for pygitx demos/tests.
+
+This clones a fixed upstream repository (git2-rs) and layers a linear demo
+branch with fixtures for filtering (secrets/, WIP commits, etc.). The demo
+branch is created as an orphan to keep history merge-free for rewriting APIs.
+Requires network access to clone the upstream repo.
 """
 
 from __future__ import annotations
@@ -7,51 +12,89 @@ from __future__ import annotations
 import subprocess
 import tempfile
 from pathlib import Path
+import shutil
 
 GENERATED_MODULE = Path(__file__).with_name("generated_repo.py")
+GIT_TEMPLATE_URL = "https://github.com/rust-lang/git2-rs.git"
 
 
 def run(cmd: list[str], cwd: Path) -> None:
     subprocess.run(cmd, cwd=cwd, check=True)
 
 
-def generate_repo(dest: Path | None = None, persist: bool = True) -> Path:
-    """Create a sample repo; optionally persist its path for later reuse."""
+def run_capture(cmd: list[str], cwd: Path) -> str:
+    return subprocess.check_output(cmd, cwd=cwd, text=True).strip()
+
+
+def generate_repo(
+    dest: Path | None = None,
+    persist: bool = True,
+    branch_name: str = "pygitx-demo",
+) -> Path:
+    """
+    Clone a fixed template repo (git2-rs) and layer an orphan demo branch with
+    linear history suitable for rewrite/filter demonstrations.
+    """
     repo_path = dest or Path(tempfile.mkdtemp(prefix="pygitx-demo-"))
     repo_path.mkdir(parents=True, exist_ok=True)
 
-    run(["git", "init", "-q"], cwd=repo_path)
+    # Clone without hardlinks to keep demo repos self-contained.
+    run(
+        ["git", "clone", "--quiet", "--no-hardlinks", GIT_TEMPLATE_URL, str(repo_path)],
+        cwd=repo_path.parent,
+    )
+
+    # Ensure predictable identity for demo commits.
     run(["git", "config", "user.name", "PyGitX"], cwd=repo_path)
     run(["git", "config", "user.email", "pygitx@example.com"], cwd=repo_path)
 
-    # Commit 1 on main
-    (repo_path / "file.txt").write_text("hello\n")
-    run(["git", "add", "file.txt"], cwd=repo_path)
-    run(["git", "commit", "-m", "base1"], cwd=repo_path)
-
-    # Commit 2 on main
-    (repo_path / "file.txt").write_text("hello base2\n")
-    run(["git", "add", "file.txt"], cwd=repo_path)
-    run(["git", "commit", "-m", "base2"], cwd=repo_path)
-
-    # Create feature branch from base1
-    run(["git", "branch", "feature", "HEAD~1"], cwd=repo_path)
-    run(["git", "checkout", "feature"], cwd=repo_path)
-
-    # Commit on feature (divergent content)
-    (repo_path / "feature.txt").write_text("feature work\n")
-    run(["git", "add", "feature.txt"], cwd=repo_path)
-    run(["git", "commit", "-m", "feature1"], cwd=repo_path)
-
-    # Add another commit on main to make rebase meaningful
-    run(["git", "checkout", "main"], cwd=repo_path)
-    (repo_path / "file.txt").write_text("hello base3\n")
-    run(["git", "add", "file.txt"], cwd=repo_path)
-    run(["git", "commit", "-m", "base3"], cwd=repo_path)
+    create_orphan_demo_branch(repo_path, branch_name)
 
     if persist:
         persist_repo_path(repo_path)
     return repo_path
+
+
+def create_orphan_demo_branch(repo_path: Path, branch_name: str) -> None:
+    # Switch to an orphan branch so history is linear and isolated from upstream merges.
+    run(["git", "checkout", "--orphan", branch_name], cwd=repo_path)
+    wipe_workdir(repo_path)
+
+    # Commit 1: base file
+    (repo_path / "file.txt").write_text("hello demo\n")
+    run(["git", "add", "file.txt"], cwd=repo_path)
+    run(["git", "commit", "-m", "demo: base"], cwd=repo_path)
+
+    # Commit 2: add secrets/logs/feature fixtures (force add if ignored).
+    (repo_path / "secrets").mkdir(parents=True, exist_ok=True)
+    (repo_path / "logs").mkdir(parents=True, exist_ok=True)
+    (repo_path / "secrets" / "token.txt").write_text("super-secret\n")
+    (repo_path / "logs" / "debug.log").write_text("debug trace\n")
+    (repo_path / "feature.txt").write_text("feature work\n")
+    run(["git", "add", "-f", "secrets/token.txt", "logs/debug.log", "feature.txt"], cwd=repo_path)
+    run(["git", "commit", "-m", "demo: add fixtures (secrets/logs/feature)"], cwd=repo_path)
+
+    # Commit 3: WIP change (for message/author filtering).
+    (repo_path / "feature.txt").write_text("WIP changes\n")
+    run(["git", "add", "feature.txt"], cwd=repo_path)
+    run(
+        [
+            "git",
+            "commit",
+            "-m",
+            "WIP: temp feature",
+            "--author",
+            "Jiucheng <jiucheng@example.com>",
+        ],
+        cwd=repo_path,
+    )
+
+    # Commit 4: cleanup removing secret (for path filtering).
+    run(["git", "rm", "-f", "secrets/token.txt"], cwd=repo_path)
+    run(["git", "commit", "-m", "cleanup: remove secret"], cwd=repo_path)
+
+    # Stay on the demo branch.
+    run(["git", "checkout", branch_name], cwd=repo_path)
 
 
 def persist_repo_path(path: Path) -> None:
@@ -95,3 +138,14 @@ def clean_repo() -> None:
             GENERATED_MODULE.unlink()
         except Exception:
             pass
+
+
+def wipe_workdir(root: Path) -> None:
+    """Remove all files except the .git directory."""
+    for entry in root.iterdir():
+        if entry.name == ".git":
+            continue
+        if entry.is_dir():
+            shutil.rmtree(entry, ignore_errors=True)
+        else:
+            entry.unlink(missing_ok=True)

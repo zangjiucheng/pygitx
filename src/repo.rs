@@ -1,15 +1,32 @@
 use crate::errors::py_git_err;
 use crate::types::PyCommitInfo;
-use git2::{BranchType, Commit, ErrorClass, ErrorCode, Oid, Repository, Signature};
+use git2::{BranchType, Commit, ErrorClass, ErrorCode, ObjectType, Oid, Repository, Signature, Tree};
+use globset::{Glob, GlobSet, GlobSetBuilder};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::PyString;
+use pyo3::types::{PyAny, PyString};
+use std::collections::HashMap;
 use std::path::Path;
 
 /// Thin wrapper around git2::Repository exposed to Python.
 #[pyclass(name = "Repo", unsendable)]
 pub struct PyRepo {
     pub(crate) repo: Repository,
+}
+
+impl PyRepo {
+    fn resolve_head_commit(&self) -> PyResult<Commit<'_>> {
+        let head_ref = self.repo.head().map_err(|err| match err.code() {
+            ErrorCode::UnbornBranch | ErrorCode::NotFound => {
+                PyValueError::new_err("repository has no HEAD commit")
+            }
+            _ => py_git_err("failed to read HEAD", err),
+        })?;
+
+        head_ref
+            .peel_to_commit()
+            .map_err(|err| py_git_err("failed to resolve HEAD to commit", err))
+    }
 }
 
 #[pymethods]
@@ -76,6 +93,216 @@ impl PyRepo {
         }
 
         Ok(commits)
+    }
+
+    /// Filter commits by author and/or message substring, dropping matches and rewriting history.
+    ///
+    /// Args:
+    ///     author (str | None): Drop commits where the author name matches this string (exact).
+    ///     message_contains (str | None): Drop commits whose message contains this substring.
+    ///
+    /// Returns:
+    ///     list[tuple[str, str]]: Mapping of old commit ids to new commit ids (dropped commits map to their parent).
+    ///
+    /// Notes:
+    ///     - Currently supports linear history (merge commits are rejected).
+    ///     - This rewrites history; branch ref/HEAD are updated to the rewritten tip.
+    #[pyo3(
+        text_signature = "($self, author=None, message_contains=None)",
+        signature = (author = None, message_contains = None)
+    )]
+    pub fn filter_commits(
+        &mut self,
+        author: Option<&str>,
+        message_contains: Option<&str>,
+    ) -> PyResult<Vec<(String, String)>> {
+        if author.is_none() && message_contains.is_none() {
+            return Err(PyValueError::new_err(
+                "must provide at least one filter: author or message_contains",
+            ));
+        }
+
+        let head_commit = self.resolve_head_commit()?;
+        let mut revwalk = self
+            .repo
+            .revwalk()
+            .map_err(|err| py_git_err("failed to create revwalk", err))?;
+        revwalk
+            .push(head_commit.id())
+            .map_err(|err| py_git_err("failed to start revwalk from HEAD", err))?;
+        let _ = revwalk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::REVERSE);
+
+        let mut rewritten = Vec::new();
+        let mut mapping: HashMap<Oid, Oid> = HashMap::new();
+
+        for oid_result in revwalk {
+            let oid = oid_result
+                .map_err(|err| py_git_err("failed to read commit id from revwalk", err))?;
+            let commit = self
+                .repo
+                .find_commit(oid)
+                .map_err(|err| py_git_err("failed to load commit", err))?;
+
+            if commit.parent_count() > 1 {
+                return Err(PyValueError::new_err(
+                    "filter_commits currently supports linear history only (merge commit encountered)",
+                ));
+            }
+
+            let mut new_parents = Vec::new();
+            for i in 0..commit.parent_count() {
+                let parent = commit
+                    .parent(i)
+                    .map_err(|err| py_git_err("failed to load parent during filter", err))?;
+                let rewritten_parent = mapping
+                    .get(&parent.id())
+                    .ok_or_else(|| PyValueError::new_err("missing parent mapping during filter"))?;
+                let parent_commit = self
+                    .repo
+                    .find_commit(*rewritten_parent)
+                    .map_err(|err| py_git_err("failed to load rewritten parent", err))?;
+                new_parents.push(parent_commit);
+            }
+
+            let author_matches = author
+                .map(|a| author_matches(&commit, a))
+                .unwrap_or(false);
+            let message_matches = message_contains
+                .map(|m| str_contains_insensitive(commit.message().unwrap_or(""), m))
+                .unwrap_or(false);
+            let should_drop = author_matches || message_matches;
+
+            if should_drop {
+                if new_parents.is_empty() {
+                    return Err(PyValueError::new_err(
+                        "cannot drop the root commit; no parent to re-parent to",
+                    ));
+                }
+                let replacement = new_parents[0].id();
+                mapping.insert(commit.id(), replacement);
+                rewritten.push((commit.id().to_string(), replacement.to_string()));
+                continue;
+            }
+
+            let tree = commit
+                .tree()
+                .map_err(|err| py_git_err("failed to load commit tree", err))?;
+            let parent_refs: Vec<&Commit> = new_parents.iter().collect();
+            let new_oid = self
+                .repo
+                .commit(
+                    None,
+                    &commit.author(),
+                    &commit.committer(),
+                    commit.message().unwrap_or(""),
+                    &tree,
+                    &parent_refs,
+                )
+                .map_err(|err| py_git_err("failed to create rewritten commit", err))?;
+
+            mapping.insert(commit.id(), new_oid);
+            rewritten.push((commit.id().to_string(), new_oid.to_string()));
+        }
+
+        let new_head_oid = mapping
+            .get(&head_commit.id())
+            .ok_or_else(|| PyValueError::new_err("failed to resolve rewritten HEAD"))?;
+        update_head(&self.repo, *new_head_oid)?;
+
+        Ok(rewritten)
+    }
+
+    /// Remove a path (glob) from all commits reachable from HEAD and rewrite history.
+    ///
+    /// Args:
+    ///     path_pattern (str): Glob-style pattern relative to repo root (e.g., "secrets.env" or "config/*.yaml").
+    ///
+    /// Returns:
+    ///     list[tuple[str, str]]: Mapping of old commit ids to new commit ids (rewritten commits).
+    ///
+    /// Notes:
+    ///     - Currently supports linear history (merge commits are rejected).
+    ///     - This rewrites history; branch ref/HEAD are updated to the rewritten tip.
+    #[pyo3(text_signature = "($self, path_pattern)")]
+    pub fn remove_path(&mut self, path_pattern: &str) -> PyResult<Vec<(String, String)>> {
+        let matcher = build_globset(path_pattern)?;
+        let head_commit = self.resolve_head_commit()?;
+        let mut revwalk = self
+            .repo
+            .revwalk()
+            .map_err(|err| py_git_err("failed to create revwalk", err))?;
+        revwalk
+            .push(head_commit.id())
+            .map_err(|err| py_git_err("failed to start revwalk from HEAD", err))?;
+        let _ = revwalk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::REVERSE);
+
+        let mut rewritten = Vec::new();
+        let mut mapping: HashMap<Oid, Oid> = HashMap::new();
+
+        for oid_result in revwalk {
+            let oid = oid_result
+                .map_err(|err| py_git_err("failed to read commit id from revwalk", err))?;
+            let commit = self
+                .repo
+                .find_commit(oid)
+                .map_err(|err| py_git_err("failed to load commit", err))?;
+
+            if commit.parent_count() > 1 {
+                return Err(PyValueError::new_err(
+                    "remove_path currently supports linear history only (merge commit encountered)",
+                ));
+            }
+
+            let mut new_parents = Vec::new();
+            for i in 0..commit.parent_count() {
+                let parent = commit
+                    .parent(i)
+                    .map_err(|err| py_git_err("failed to load parent during remove_path", err))?;
+                let rewritten_parent = mapping.get(&parent.id()).ok_or_else(|| {
+                    PyValueError::new_err("missing parent mapping during remove_path")
+                })?;
+                let parent_commit = self
+                    .repo
+                    .find_commit(*rewritten_parent)
+                    .map_err(|err| py_git_err("failed to load rewritten parent", err))?;
+                new_parents.push(parent_commit);
+            }
+
+            let tree = commit
+                .tree()
+                .map_err(|err| py_git_err("failed to load commit tree", err))?;
+            let maybe_new_tree = rewrite_tree_without_paths(&self.repo, &tree, &matcher, Path::new(""))?;
+            let final_tree = match maybe_new_tree {
+                Some(oid) => self
+                    .repo
+                    .find_tree(oid)
+                    .map_err(|err| py_git_err("failed to load rewritten tree", err))?,
+                None => tree,
+            };
+
+            let parent_refs: Vec<&Commit> = new_parents.iter().collect();
+            let new_oid = self
+                .repo
+                .commit(
+                    None,
+                    &commit.author(),
+                    &commit.committer(),
+                    commit.message().unwrap_or(""),
+                    &final_tree,
+                    &parent_refs,
+                )
+                .map_err(|err| py_git_err("failed to create rewritten commit", err))?;
+
+            mapping.insert(commit.id(), new_oid);
+            rewritten.push((commit.id().to_string(), new_oid.to_string()));
+        }
+
+        let new_head_oid = mapping
+            .get(&head_commit.id())
+            .ok_or_else(|| PyValueError::new_err("failed to resolve rewritten HEAD"))?;
+        update_head(&self.repo, *new_head_oid)?;
+
+        Ok(rewritten)
     }
 
     /// Amend the message of the HEAD commit.
@@ -591,6 +818,29 @@ fn compose_squash_message(commits: &[Commit<'_>], mode: SquashMode) -> String {
     }
 }
 
+fn update_head(repo: &Repository, new_oid: Oid) -> PyResult<()> {
+    match repo.head() {
+        Ok(mut head_ref) => {
+            let name = head_ref.name().map(|s| s.to_string());
+            if let Some(name) = name {
+                head_ref
+                    .set_target(new_oid, "history rewrite")
+                    .map_err(|err| py_git_err("failed to update ref after rewrite", err))?;
+                repo.set_head(&name)
+                    .map_err(|err| py_git_err("failed to update HEAD after rewrite", err))?;
+            } else {
+                repo.set_head_detached(new_oid)
+                    .map_err(|err| py_git_err("failed to detach HEAD to rewritten commit", err))?;
+            }
+        }
+        Err(_) => {
+            repo.set_head_detached(new_oid)
+                .map_err(|err| py_git_err("failed to detach HEAD to rewritten commit", err))?;
+        }
+    }
+    Ok(())
+}
+
 fn resolve_repo_path(py: Python<'_>, path: &Bound<'_, PyAny>) -> PyResult<String> {
     // Accept strings or os.PathLike objects (e.g., pathlib.Path) and normalize via os.fspath.
     let os = py.import("os")?;
@@ -605,4 +855,81 @@ fn resolve_repo_path(py: Python<'_>, path: &Bound<'_, PyAny>) -> PyResult<String
         .cast_into()
         .map_err(|_| PyValueError::new_err("path must resolve to a string"))?;
     Ok(path_str.to_cow()?.into_owned())
+}
+
+fn build_globset(pattern: &str) -> PyResult<GlobSet> {
+    let mut builder = GlobSetBuilder::new();
+    let glob = Glob::new(pattern).map_err(|err| {
+        PyValueError::new_err(format!("invalid path pattern '{}': {}", pattern, err))
+    })?;
+    builder.add(glob);
+    builder
+        .build()
+        .map_err(|err| PyValueError::new_err(format!("failed to build globset: {}", err)))
+}
+
+fn author_matches(commit: &Commit<'_>, filter: &str) -> bool {
+    let author = commit.author();
+    let filter = filter.to_lowercase();
+    let name = author.name().unwrap_or_default().to_lowercase();
+    let email = author.email().unwrap_or_default().to_lowercase();
+    name == filter || name.contains(&filter) || email.contains(&filter)
+}
+
+fn str_contains_insensitive(haystack: &str, needle: &str) -> bool {
+    let h = haystack.to_lowercase();
+    let n = needle.to_lowercase();
+    h.contains(&n)
+}
+
+fn rewrite_tree_without_paths(
+    repo: &Repository,
+    tree: &Tree<'_>,
+    matcher: &GlobSet,
+    base: &Path,
+) -> PyResult<Option<Oid>> {
+    let mut builder = repo
+        .treebuilder(Some(tree))
+        .map_err(|err| py_git_err("failed to create treebuilder", err))?;
+    let mut changed = false;
+
+    for entry in tree.iter() {
+        let name = match entry.name() {
+            Some(n) => n,
+            None => continue,
+        };
+        let full_path = base.join(name);
+        let path_str = full_path.to_string_lossy();
+
+        if matcher.is_match(path_str.as_ref()) {
+            builder
+                .remove(name)
+                .map_err(|err| py_git_err("failed to remove matched path", err))?;
+            changed = true;
+            continue;
+        }
+
+        if entry.kind() == Some(ObjectType::Tree) {
+            let child_tree = repo
+                .find_tree(entry.id())
+                .map_err(|err| py_git_err("failed to load subtree", err))?;
+            if let Some(new_child_oid) =
+                rewrite_tree_without_paths(repo, &child_tree, matcher, &full_path)?
+            {
+                builder
+                    .insert(name, new_child_oid, entry.filemode())
+                    .map_err(|err| py_git_err("failed to replace subtree", err))?;
+                changed = true;
+            }
+        }
+    }
+
+    if changed {
+        let oid = builder
+            .write()
+            .map_err(|err| py_git_err("failed to write rewritten tree", err))?;
+        Ok(Some(oid))
+    } else {
+        Ok(None)
+    }
 }

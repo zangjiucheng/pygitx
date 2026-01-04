@@ -10,6 +10,8 @@ Cross-platform Git history access implemented in Rust with a Python API via PyO3
 - `Repo.rewrite_author(commit_id, new_name, new_email, update_committer=True)` to rewrite HEAD author (optionally committer).
 - `Repo.rebase_branch(branch, onto)` to replay a branch onto a new base (pick-only).
 - `Repo.squash_last(count, mode="squash", message=None)` to squash the latest commits (or fixup-style).
+- `Repo.filter_commits(author=None, message_contains=None)` to drop commits matching simple criteria.
+- `Repo.remove_path(path_pattern)` to purge a path (glob) from all commits.
 - Vendored libgit2 for predictable, cross-platform builds.
 
 ## Quick start (editable install with uv)
@@ -68,6 +70,14 @@ if head:
 # Rebase a branch onto a new base (pick-only)
 updated_commits = repo.rebase_branch("feature", "main")
 print("Rebased commits:", updated_commits)
+
+# Drop commits by author or message substring
+filtered = repo.filter_commits(author="Bad Actor", message_contains="WIP")
+print("Filtered mapping:", filtered)
+
+# Remove a path across history (glob)
+purged = repo.remove_path("secrets/*.txt")
+print("Purged path mapping:", purged)
 ```
 
 Example script: `examples/demo.py` (see `--help` for options to generate a demo repo, list commits, amend/rewrite, or rebase).
@@ -81,7 +91,12 @@ Example script: `examples/demo.py` (see `--help` for options to generate a demo 
 ## Notes / future
 - ABI3 wheel targeting Python 3.9+ (`abi3-py39`).
 - Built on `git2` (libgit2) for speed and portability.
+- History filtering/removal currently supports linear histories; merge commits are rejected.
 - Amending commit messages rewrites history; avoid on published branches unless you know the consequences.
 - Rewriting author/committer also rewrites history and is currently limited to HEAD; rewriting older commits requires a rebase-like flow.
 - Rebase is non-interactive (pick-only) and rewrites branch history; conflicts will abort with an error.
-- Future roadmap: commit message edits, author rewrites, squash/rebase helpers, filtering.
+- Roadmap (v0.6: history filtering and commit selection):
+  - Drop commits by criteria (e.g., author/message match) and re-parent descendants to keep DAG correctness.
+  - Strip or replace paths/text across history (e.g., purge secrets or remove a file/folder from all commits).
+  - Compose multiple filters in one pass with an old-to-new commit map to maintain parent links.
+  - Traverse commits in topological order for determinism; prepare metadata scans in parallel where safe.

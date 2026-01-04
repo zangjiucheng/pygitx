@@ -26,6 +26,10 @@ class Repo:
         """Amend HEAD with a new message (rewrites history). commit_id must resolve to HEAD."""
     def rewrite_author(self, commit_id: str, new_name: str, new_email: str, update_committer: bool = True) -> CommitInfo:
         """Amend HEAD with new author (and committer if update_committer). commit_id must resolve to HEAD."""
+    def filter_commits(self, author: str | None = None, message_contains: str | None = None) -> list[tuple[str, str]]:
+        """Drop commits matching author or message substring; returns mapping of old->new ids (dropped map to parent)."""
+    def remove_path(self, path_pattern: str) -> list[tuple[str, str]]:
+        """Purge a path (glob) from all commits reachable from HEAD; returns mapping of old->new ids."""
     def rebase_branch(self, branch: str, onto: str) -> list[tuple[str, str]]:
         """Rebase a local branch onto a new base (pick-only). Returns [(old_id, new_id)] mapping."""
     def squash_last(self, count: int, mode: str = "squash", message: str | None = None) -> CommitInfo:
