@@ -88,6 +88,11 @@ def remove_path(repo: pygitx.Repo, path_pattern: str) -> None:
     print(f"Purged '{path_pattern}' from history (old -> new): {fmt_mapping(mappings.old_to_new)}")
 
 
+def rev_parse(repo: pygitx.Repo, spec: str) -> None:
+    resolved = repo.rev_parse(spec)
+    print(f"{spec} -> {resolved}")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="pygitx demo utilities")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -132,6 +137,10 @@ def parse_args() -> argparse.Namespace:
     rm.add_argument("path", nargs="?", type=Path, help="path to repo (default: last generated)")
     rm.add_argument("pattern", help="glob pattern to purge (e.g., 'secrets/*.txt')")
 
+    rev = sub.add_parser("rev-parse", help="resolve a revision spec to an object id")
+    rev.add_argument("path", nargs="?", type=Path, help="path to repo (default: last generated)")
+    rev.add_argument("spec", help="revision spec (e.g., HEAD~1, main, v1.0, abc1234)")
+
     return parser.parse_args()
 
 
@@ -172,6 +181,8 @@ def main() -> None:
         filter_commits(repo, author_filter, args.message_contains)
     elif args.cmd == "remove-path":
         remove_path(repo, args.pattern)
+    elif args.cmd == "rev-parse":
+        rev_parse(repo, args.spec)
 
 
 if __name__ == "__main__":

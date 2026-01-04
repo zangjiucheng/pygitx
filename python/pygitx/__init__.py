@@ -24,6 +24,7 @@ __all__ = [
     "open_repo",
     "create_backup_ref",
     "head",
+    "rev_parse",
     "list_commits",
     "change_commit_message",
     "rewrite_author",
@@ -77,6 +78,13 @@ def list_commits(repo: Repo | str, max: Optional[int] = None) -> list[CommitInfo
 def head(repo: Repo | str) -> Optional[CommitInfo]:
     """Return HEAD commit info."""
     return _ensure_repo(repo).head()
+
+
+def rev_parse(repo: Repo | str, spec: str) -> str:
+    """Resolve a revision spec (HEAD, branch, tag, or oid) to a hex object id."""
+    if not spec.strip():
+        raise ValueError("spec cannot be empty")
+    return _ensure_repo(repo).rev_parse(spec)
 
 
 def filter_commits(

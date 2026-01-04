@@ -36,6 +36,32 @@ fn repo_with_commit_reports_head() {
 }
 
 #[test]
+fn rev_parse_resolves_common_specs() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    let first = create_commit_on_ref(&repo, "HEAD", &[], "first", "one");
+    let second = create_commit_on_ref(&repo, "HEAD", &[first], "second", "two");
+    let third = create_commit_on_ref(&repo, "HEAD", &[second], "third", "three");
+
+    repo.branch("feature", &repo.find_commit(second).unwrap(), false)
+        .unwrap();
+    repo.reference("refs/tags/v1.0", first, true, "tag v1.0")
+        .unwrap();
+
+    let py_repo = PyRepo { repo };
+
+    assert_eq!(py_repo.rev_parse("HEAD").unwrap(), third.to_string());
+    assert_eq!(py_repo.rev_parse("HEAD~1").unwrap(), second.to_string());
+    assert_eq!(py_repo.rev_parse("HEAD^").unwrap(), second.to_string());
+    assert_eq!(py_repo.rev_parse("feature").unwrap(), second.to_string());
+    assert_eq!(py_repo.rev_parse("v1.0").unwrap(), first.to_string());
+
+    let short = &third.to_string()[0..7];
+    assert_eq!(py_repo.rev_parse(short).unwrap(), third.to_string());
+}
+
+#[test]
 fn open_repo_accepts_pathlike() {
     init_python();
     let dir = tempdir().unwrap();
@@ -459,80 +485,7 @@ fn create_backup_ref_creates_backup_refs() {
 fn init_python() {
     // Initialize the embedded Python interpreter once for PyO3-bound types used in tests.
     static INIT: std::sync::Once = std::sync::Once::new();
-    INIT.call_once(|| {
-        if let Some((base_prefix, version)) = python_base_from_env() {
-            unsafe {
-                std::env::set_var("PYTHONHOME", &base_prefix);
-            }
-            if std::env::var_os("PYTHONPATH").is_none() {
-                let mut stdlib = base_prefix.clone();
-                stdlib.push("lib");
-                stdlib.push(format!("python{}", version));
-                let mut site = stdlib.clone();
-                site.push("site-packages");
-                let path_val = format!(
-                    "{}:{}",
-                    stdlib.to_string_lossy(),
-                    site.to_string_lossy()
-                );
-                unsafe {
-                    std::env::set_var("PYTHONPATH", path_val);
-                }
-            }
-        }
-        Python::initialize();
-    });
-}
-
-fn python_base_from_env() -> Option<(std::path::PathBuf, String)> {
-    if let Some(home) = std::env::var_os("PYTHONHOME") {
-        let ver = python_version_hint();
-        return Some((std::path::PathBuf::from(home), ver));
-    }
-
-    // Prefer explicit VIRTUAL_ENV.
-    let venv_dir = std::env::var_os("VIRTUAL_ENV").map(std::path::PathBuf::from).or_else(|| {
-        std::env::current_dir()
-            .ok()
-            .map(|cwd| cwd.join(".venv"))
-            .filter(|p| p.exists())
-    });
-
-    let venv = venv_dir?;
-    if let Some((base, ver)) = parse_pyvenv_cfg(&venv) {
-        return Some((base, ver));
-    }
-
-    let ver = python_version_hint();
-    Some((venv, ver))
-}
-
-fn parse_pyvenv_cfg(venv: &std::path::Path) -> Option<(std::path::PathBuf, String)> {
-    let cfg = venv.join("pyvenv.cfg");
-    let contents = std::fs::read_to_string(cfg).ok()?;
-    let mut home_line = None;
-    let mut version_line = None;
-    for line in contents.lines() {
-        if let Some(rest) = line.strip_prefix("home =") {
-            home_line = Some(rest.trim().to_string());
-        }
-        if let Some(rest) = line.strip_prefix("version =") {
-            version_line = Some(rest.trim().to_string());
-        }
-    }
-    let home = home_line?;
-    let mut base = std::path::PathBuf::from(home);
-    // pyvenv home usually points to .../bin; step up one to the prefix.
-    if base.ends_with("bin") {
-        base.pop();
-    }
-    let version = version_line.unwrap_or_else(python_version_hint);
-    Some((base, version))
-}
-
-fn python_version_hint() -> String {
-    // Default to 3.11 if we cannot infer; used only to build PYTHONPATH.
-    "3.11".to_string()
+    INIT.call_once(Python::initialize);
 }
 
 fn create_commit_on_ref(

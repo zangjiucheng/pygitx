@@ -71,6 +71,22 @@ impl PyRepo {
         Ok(Some(PyCommitInfo::from_commit(&commit)))
     }
 
+    /// Resolve a revision spec to an object id (hex).
+    ///
+    /// Args:
+    ///     spec (str): Revision string (e.g., "HEAD", "HEAD~1", "main", "v1.0", full or short oid).
+    ///
+    /// Returns:
+    ///     str: Hexadecimal object id for the resolved spec.
+    #[pyo3(text_signature = "($self, spec)")]
+    pub fn rev_parse(&self, spec: &str) -> PyResult<String> {
+        let obj = self
+            .repo
+            .revparse_single(spec)
+            .map_err(|err| PyValueError::new_err(format!("invalid revision spec '{}': {}", spec, err)))?;
+        Ok(obj.id().to_string())
+    }
+
     /// List commits reachable from HEAD (most recent first).
     ///
     /// Args:

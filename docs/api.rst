@@ -1,6 +1,10 @@
 API Reference
 =============
 
+.. contents::
+   :local:
+   :depth: 2
+
 Module
 ------
 
@@ -70,6 +74,10 @@ Classes
 
       Return the current HEAD commit, or None if HEAD is unborn/detached without a commit.
 
+   .. py:method:: rev_parse(spec: str) -> str
+
+      Resolve a revision string (e.g., ``HEAD``, ``HEAD~1``, branch/tag, or full/short oid) to a hex object id.
+
    .. py:method:: list_commits(max: int | None = None) -> list[CommitInfo]
 
       Commits reachable from HEAD (newest first). Pass ``max`` to limit results.
@@ -108,3 +116,7 @@ Functions
 .. py:function:: pygitx.create_backup_ref(repo: Repo | str, prefix: str | None = None) -> str
 
    Create backup refs under ``refs/pygitx/backup/<timestamp>`` for HEAD and its branch (if attached).
+
+.. py:function:: pygitx.rev_parse(repo: Repo | str, spec: str) -> str
+
+   Resolve a revision spec to a hex object id. Accepts typical git rev syntax (``HEAD``, ``HEAD~N``, branches, tags, short/full oids).

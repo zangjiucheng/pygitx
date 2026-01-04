@@ -19,9 +19,13 @@ classifiers = [
     "Operating System :: MacOS",
     "Operating System :: POSIX :: Linux",
     "Operating System :: Microsoft :: Windows",
-    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Software Development :: Version Control",
 ]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/zangjiucheng/pygitx"
+Documentation = "https://zangjiucheng.github.io/pygitx"
 
 [project.optional-dependencies]
 dev = ["maturin"]
