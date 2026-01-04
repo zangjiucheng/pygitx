@@ -88,7 +88,7 @@ Drop commits by author or message substring:
 
 .. code-block:: python
 
-   mapping = repo.filter_commits(author="Bad Actor", message_contains="WIP")
+   mapping = repo.filter_commits(author="bad actor", message_contains="wip")
    print(mapping)
 
 Remove a path (glob) from all commits:
@@ -98,16 +98,11 @@ Remove a path (glob) from all commits:
    purged = repo.remove_path("secrets/*.txt")
    print(purged)
 
-Note: Filtering/removal currently supports linear history (merge commits are rejected).
+Notes:
+- Filtering/removal currently supports linear history (merge commits are rejected).
+- Author/email/message matching is case-insensitive; path matching uses globs.
 
 Example script
 --------------
 
 `examples/demo.py` bundles the above: generate a repo, list commits, amend messages, rewrite author, and rebase (run with ``--help``).
-
-Planned: Version 0.6 (History Filtering and Commit Selection)
--------------------------------------------------------------
-- Drop commits by criteria (author/message/etc.) and re-parent children to keep the DAG consistent.
-- Remove or replace paths/text across history (e.g., purge files/secrets from all commits).
-- Compose multiple filters in one pass with an old-to-new commit map; traverse in topological order for determinism.
-- Potential performance prep: parallel metadata scans where safe; commit rewriting remains ordered.

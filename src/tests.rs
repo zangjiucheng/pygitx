@@ -301,8 +301,7 @@ fn filter_commits_drops_matching_and_reparents() {
     let tip = create_commit_on_ref(&repo, "HEAD", &[middle], "final", "c");
     let mut py_repo = PyRepo { repo };
 
-    let mappings = py_repo
-        .filter_commits(None, Some("WIP"))
+    let mappings = Python::with_gil(|py| py_repo.filter_commits(py, None, Some("WIP")))
         .expect("filter should succeed");
     let map: std::collections::HashMap<String, String> = mappings.into_iter().collect();
 
@@ -312,6 +311,39 @@ fn filter_commits_drops_matching_and_reparents() {
     assert_eq!(middle_new, base_new);
 
     // Head should point to rewritten tip; commit count should shrink by one.
+    let head = py_repo.head().unwrap().unwrap();
+    let tip_new = map.get(&tip.to_string()).expect("tip mapping");
+    assert_eq!(&head.id, tip_new);
+    assert_eq!(py_repo.list_commits(None).unwrap().len(), 2);
+}
+
+#[test]
+fn filter_commits_matches_author_case_insensitive() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    let base = create_commit_on_ref(&repo, "HEAD", &[], "base", "a");
+    let special = create_commit_with_author(
+        &repo,
+        "HEAD",
+        &[base],
+        "by Special",
+        "b",
+        "Jiucheng",
+        "Jiucheng@example.com",
+    );
+    let tip = create_commit_on_ref(&repo, "HEAD", &[special], "final", "c");
+    let mut py_repo = PyRepo { repo };
+
+    let mappings = Python::with_gil(|py| py_repo.filter_commits(py, Some("jiucheng"), None))
+        .expect("filter should succeed");
+    let map: std::collections::HashMap<String, String> = mappings.into_iter().collect();
+
+    // Special commit should be dropped and reparented.
+    let base_new = map.get(&base.to_string()).expect("base mapping");
+    let special_new = map.get(&special.to_string()).expect("special mapping");
+    assert_eq!(special_new, base_new);
+
     let head = py_repo.head().unwrap().unwrap();
     let tip_new = map.get(&tip.to_string()).expect("tip mapping");
     assert_eq!(&head.id, tip_new);
@@ -341,8 +373,7 @@ fn remove_path_purges_files_from_history() {
     );
     let mut py_repo = PyRepo { repo };
 
-    let mappings = py_repo
-        .remove_path("secrets/*.txt")
+    let mappings = Python::with_gil(|py| py_repo.remove_path(py, "secrets/*.txt"))
         .expect("remove_path should succeed");
     let map: std::collections::HashMap<String, String> = mappings.into_iter().collect();
 
@@ -469,6 +500,36 @@ fn create_commit_on_ref_with_path(
 
     let mut index = repo.index().unwrap();
     index.add_path(Path::new(path)).unwrap();
+    index.write().unwrap();
+    let tree_id = index.write_tree().unwrap();
+    let tree = repo.find_tree(tree_id).unwrap();
+
+    let parents: Vec<Commit<'_>> = parent_oids
+        .iter()
+        .map(|oid| repo.find_commit(*oid).unwrap())
+        .collect();
+    let parent_refs: Vec<&Commit> = parents.iter().collect();
+
+    repo.commit(Some(reference), &sig, &sig, message, &tree, &parent_refs)
+        .unwrap()
+}
+
+fn create_commit_with_author(
+    repo: &Repository,
+    reference: &str,
+    parent_oids: &[Oid],
+    message: &str,
+    content: &str,
+    author_name: &str,
+    author_email: &str,
+) -> Oid {
+    let sig = Signature::now(author_name, author_email).unwrap();
+    let workdir = repo.workdir().expect("repo should have workdir");
+    let file_path = workdir.join("file.txt");
+    fs::write(&file_path, content).unwrap();
+
+    let mut index = repo.index().unwrap();
+    index.add_path(Path::new("file.txt")).unwrap();
     index.write().unwrap();
     let tree_id = index.write_tree().unwrap();
     let tree = repo.find_tree(tree_id).unwrap();

@@ -10,7 +10,7 @@ Cross-platform Git history access implemented in Rust with a Python API via PyO3
 - `Repo.rewrite_author(commit_id, new_name, new_email, update_committer=True)` to rewrite HEAD author (optionally committer).
 - `Repo.rebase_branch(branch, onto)` to replay a branch onto a new base (pick-only).
 - `Repo.squash_last(count, mode="squash", message=None)` to squash the latest commits (or fixup-style).
-- `Repo.filter_commits(author=None, message_contains=None)` to drop commits matching simple criteria.
+- `Repo.filter_commits(author=None, message_contains=None)` to drop commits matching simple criteria (case-insensitive author/email/message).
 - `Repo.remove_path(path_pattern)` to purge a path (glob) from all commits.
 - Vendored libgit2 for predictable, cross-platform builds.
 
@@ -72,7 +72,7 @@ updated_commits = repo.rebase_branch("feature", "main")
 print("Rebased commits:", updated_commits)
 
 # Drop commits by author or message substring
-filtered = repo.filter_commits(author="Bad Actor", message_contains="WIP")
+filtered = repo.filter_commits(author="bad actor", message_contains="wip")
 print("Filtered mapping:", filtered)
 
 # Remove a path across history (glob)
@@ -92,11 +92,7 @@ Example script: `examples/demo.py` (see `--help` for options to generate a demo 
 - ABI3 wheel targeting Python 3.9+ (`abi3-py39`).
 - Built on `git2` (libgit2) for speed and portability.
 - History filtering/removal currently supports linear histories; merge commits are rejected.
+- Filtering/search is case-insensitive for author/email/message; globbing is used for path removal.
 - Amending commit messages rewrites history; avoid on published branches unless you know the consequences.
 - Rewriting author/committer also rewrites history and is currently limited to HEAD; rewriting older commits requires a rebase-like flow.
 - Rebase is non-interactive (pick-only) and rewrites branch history; conflicts will abort with an error.
-- Roadmap (v0.6: history filtering and commit selection):
-  - Drop commits by criteria (e.g., author/message match) and re-parent descendants to keep DAG correctness.
-  - Strip or replace paths/text across history (e.g., purge secrets or remove a file/folder from all commits).
-  - Compose multiple filters in one pass with an old-to-new commit map to maintain parent links.
-  - Traverse commits in topological order for determinism; prepare metadata scans in parallel where safe.

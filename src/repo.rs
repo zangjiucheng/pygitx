@@ -113,6 +113,15 @@ impl PyRepo {
     )]
     pub fn filter_commits(
         &mut self,
+        py: Python<'_>,
+        author: Option<&str>,
+        message_contains: Option<&str>,
+    ) -> PyResult<Vec<(String, String)>> {
+        py.detach(move || self.filter_commits_internal(author, message_contains))
+    }
+
+    fn filter_commits_internal(
+        &mut self,
         author: Option<&str>,
         message_contains: Option<&str>,
     ) -> PyResult<Vec<(String, String)>> {
@@ -224,7 +233,11 @@ impl PyRepo {
     ///     - Currently supports linear history (merge commits are rejected).
     ///     - This rewrites history; branch ref/HEAD are updated to the rewritten tip.
     #[pyo3(text_signature = "($self, path_pattern)")]
-    pub fn remove_path(&mut self, path_pattern: &str) -> PyResult<Vec<(String, String)>> {
+    pub fn remove_path(&mut self, py: Python<'_>, path_pattern: &str) -> PyResult<Vec<(String, String)>> {
+        py.detach(move || self.remove_path_internal(path_pattern))
+    }
+
+    fn remove_path_internal(&mut self, path_pattern: &str) -> PyResult<Vec<(String, String)>> {
         let matcher = build_globset(path_pattern)?;
         let head_commit = self.resolve_head_commit()?;
         let mut revwalk = self
