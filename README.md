@@ -1,10 +1,10 @@
 # PyGitX
 
-[![PyPI](https://img.shields.io/pypi/v/pygitx.svg)](https://pypi.org/project/pygitx/)
-[![Python](https://img.shields.io/pypi/pyversions/pygitx.svg)](https://pypi.org/project/pygitx/)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Build](https://img.shields.io/github/actions/workflow/status/zangjiucheng/pygitx/publish-to-pypi.yml?label=build)](https://github.com/zangjiucheng/pygitx/actions)
-[![Last commit](https://img.shields.io/github/last-commit/zangjiucheng/pygitx.svg)](https://github.com/jiucheng-xie/pygitx/commits/main)
+[![pypi](https://img.shields.io/pypi/v/pygitx.svg)](https://pypi.org/project/pygitx/)
+[![support-version](https://img.shields.io/pypi/pyversions/pygitx)](https://img.shields.io/pypi/pyversions/pygitx)
+[![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![build](https://img.shields.io/github/actions/workflow/status/zangjiucheng/pygitx/publish-to-pypi.yml?label=build)](https://github.com/zangjiucheng/pygitx/actions)
+[![commit](https://img.shields.io/github/last-commit/zangjiucheng/pygitx.svg)](https://github.com/jiucheng-xie/pygitx/commits/main)
 
 
 
