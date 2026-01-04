@@ -8,12 +8,12 @@ version = "0.1.0"
 description = "Cross-platform Git history access via Rust with a Python API"
 requires-python = ">=3.11"
 authors = [{ name = "pygitx" }]
+license = "Apache-2.0"
 classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Rust",
-    "License :: OSI Approved :: MIT License",
     "License :: OSI Approved :: Apache Software License",
 ]
 dependencies = []

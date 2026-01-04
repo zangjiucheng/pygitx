@@ -1,5 +1,13 @@
 # PyGitX
 
+[![PyPI](https://img.shields.io/pypi/v/pygitx.svg)](https://pypi.org/project/pygitx/)
+[![Python](https://img.shields.io/pypi/pyversions/pygitx.svg)](https://pypi.org/project/pygitx/)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Build](https://img.shields.io/github/actions/workflow/status/zangjiucheng/pygitx/publish-to-pypi.yml?label=build)](https://github.com/zangjiucheng/pygitx/actions)
+[![Last commit](https://img.shields.io/github/last-commit/zangjiucheng/pygitx.svg)](https://github.com/jiucheng-xie/pygitx/commits/main)
+
+
+
 Cross-platform Git history access implemented in Rust with a Python API via PyO3 and libgit2.
 
 ## What you get
