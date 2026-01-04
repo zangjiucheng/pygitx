@@ -34,7 +34,7 @@ test:
 	cargo test --features python-tests
 
 coverage:
-	pytest --cov=python/pygitx --cov-report=term-missing
+	pytest --cov=pygitx --cov-report=term-missing
 
 clean: cleancargo cleanvenv
 	rm -rf target/wheels

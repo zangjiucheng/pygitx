@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # needed for Codecov to find base commits
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -19,18 +21,21 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install maturin pytest pytest-cov
 
-      - name: Build native extension (develop)
-        run: maturin develop --features python-extension --release
+      - name: Build wheel
+        run: maturin build --features python-extension --release -o dist
+
+      - name: Install built wheel
+        run: python -m pip install dist/*.whl
 
       - name: Run tests with coverage
-        run: pytest --cov=python/pygitx --cov-report=xml --cov-report=term
+        run: pytest --cov=pygitx --cov-report=xml --cov-report=term
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
