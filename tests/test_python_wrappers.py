@@ -71,6 +71,24 @@ def test_change_commit_message_wrapper_validates_and_updates(tmp_path: Path) -> 
     assert log == "new message"
 
 
+def test_reword_wrapper(tmp_path: Path) -> None:
+    repo_path = init_repo(tmp_path)
+    base = commit_file(repo_path, "base", "base.txt", "base")
+    middle = commit_file(repo_path, "middle", "mid.txt", "mid")
+    tip = commit_file(repo_path, "tip", "tip.txt", "tip")
+
+    py_repo = pygitx.open_repo(str(repo_path))
+    with pytest.raises(ValueError):
+        pygitx.reword(py_repo, middle, "   ")
+
+    result = pygitx.reword(py_repo, middle, "reworded middle")
+    new_head = pygitx.head(py_repo)
+    assert new_head and new_head.id != tip
+    assert result.old_to_new.get(middle)
+    log = run_git(repo_path, "log", "--pretty=%s")
+    assert "reworded middle" in log.splitlines()[1]
+
+
 def test_rewrite_author_wrapper_validates_and_updates(tmp_path: Path) -> None:
     repo_path = init_repo(tmp_path)
     commit_id = commit_file(repo_path, "initial")

@@ -87,6 +87,112 @@ impl PyRepo {
         Ok(obj.id().to_string())
     }
 
+    /// Reword an arbitrary commit on the current branch (linear histories only).
+    ///
+    /// Args:
+    ///     commit_id (str): Target commit to reword (must be on the current branch).
+    ///     new_message (str): Replacement commit message.
+    ///
+    /// Returns:
+    ///     RewriteResult: Mapping of old commit ids to rewritten ids and updated refs.
+    ///
+    /// Notes:
+    ///     - Only supports linear history along the current HEAD's first-parent chain.
+    ///     - Fails if the target commit is not reachable from HEAD via first parents.
+    #[pyo3(text_signature = "($self, commit_id, new_message)")]
+    pub fn reword(&mut self, commit_id: &str, new_message: &str) -> PyResult<RewriteResult> {
+        if new_message.trim().is_empty() {
+            return Err(PyValueError::new_err("new_message cannot be empty"));
+        }
+
+        let target_oid = Oid::from_str(commit_id)
+            .map_err(|_| PyValueError::new_err(format!("invalid commit id '{}'", commit_id)))?;
+        let head_commit = self.resolve_head_commit()?;
+
+        // Collect commits from HEAD back to target along first-parent chain.
+        let mut chain: Vec<Commit<'_>> = Vec::new();
+        let mut current = head_commit.clone();
+        loop {
+            chain.push(current.clone());
+            if current.id() == target_oid {
+                break;
+            }
+            if current.parent_count() != 1 {
+                return Err(PyValueError::new_err(
+                    "reword only supports linear history (first-parent traversal)",
+                ));
+            }
+            current = current
+                .parent(0)
+                .map_err(|err| py_git_err("failed to walk parents during reword", err))?;
+            if chain.len() > 10_000 {
+                return Err(PyValueError::new_err(
+                    "reword traversal exceeded 10k commits; aborting",
+                ));
+            }
+        }
+
+        // Replay oldest -> newest, reusing original trees and metadata except for message on target.
+        chain.reverse();
+        let backup_refs = collect_head_refs(&self.repo)?;
+        let backup_root = create_backup_refs(&self.repo, &backup_refs, None)?;
+
+        let mut mapping: HashMap<Oid, Oid> = HashMap::new();
+
+        for commit in &chain {
+            let tree = commit
+                .tree()
+                .map_err(|err| py_git_err("failed to load tree during reword", err))?;
+
+            let mut parent_refs: Vec<Commit<'_>> = Vec::new();
+            for i in 0..commit.parent_count() {
+                let parent = commit
+                    .parent(i)
+                    .map_err(|err| py_git_err("failed to load parent during reword", err))?;
+                let rewritten_parent_oid = mapping.get(&parent.id()).copied().unwrap_or(parent.id());
+                let rewritten_parent = self
+                    .repo
+                    .find_commit(rewritten_parent_oid)
+                    .map_err(|err| py_git_err("failed to load rewritten parent during reword", err))?;
+                parent_refs.push(rewritten_parent);
+            }
+
+            let msg = if commit.id() == target_oid {
+                new_message
+            } else {
+                commit.message().unwrap_or("")
+            };
+
+            let parent_borrows: Vec<&Commit> = parent_refs.iter().collect();
+            let new_oid = self
+                .repo
+                .commit(
+                    None,
+                    &commit.author(),
+                    &commit.committer(),
+                    msg,
+                    &tree,
+                    &parent_borrows,
+                )
+                .map_err(|err| py_git_err("failed to create rewritten commit during reword", err))?;
+
+            mapping.insert(commit.id(), new_oid);
+        }
+
+        let new_head_oid = mapping
+            .get(&head_commit.id())
+            .copied()
+            .ok_or_else(|| PyValueError::new_err("failed to resolve rewritten HEAD after reword"))?;
+        let updated_refs = update_head(&self.repo, new_head_oid)?;
+
+        Ok(RewriteResult::with_maps(
+            mapping,
+            updated_refs,
+            Vec::new(),
+            Some(backup_root),
+        ))
+    }
+
     /// List commits reachable from HEAD (most recent first).
     ///
     /// Args:

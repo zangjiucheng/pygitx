@@ -124,3 +124,20 @@ def test_squash_rebase_filter_and_remove_path(tmp_path: Path) -> None:
         stdout, stderr = proc.communicate()
         assert proc.returncode != 0
         assert b"fatal" in stderr or b"exists" in stderr
+
+
+def test_reword_arbitrary_commit(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path)
+    base = commit_file(repo, "base", "base.txt", "base")
+    middle = commit_file(repo, "middle", "mid.txt", "mid")
+    tip = commit_file(repo, "tip", "tip.txt", "tip")
+
+    py_repo = pygitx.open_repo(str(repo))
+    result = py_repo.reword(middle, "rewritten middle")
+    new_head = py_repo.head()
+    assert new_head and new_head.id != tip
+    assert result.old_to_new.get(middle)
+
+    log = run_git(repo, "log", "--pretty=%s")
+    # Newest is rewritten tip, second line should be rewritten middle
+    assert "rewritten middle" in log.splitlines()[1]
