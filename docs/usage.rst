@@ -4,14 +4,23 @@ Usage
 Quick start
 -----------
 
-Install the extension (editable):
+Install the extension (editable) with `uv`:
 
 .. code-block:: bash
 
-   python -m venv .venv
+   uv venv
    source .venv/bin/activate
-   pip install -U pip maturin
-   maturin develop --features python-extension
+   uv pip install -U maturin
+   uv run maturin develop --features python-extension
+
+Or use the Makefile helpers (requires `uv`):
+
+.. code-block:: bash
+
+   make venv
+   source .venv/bin/activate
+   make install
+   make develop
 
 Open a repository and read commits (or use ``examples/demo.py generate`` to create a sample repo):
 

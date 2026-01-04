@@ -66,7 +66,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="pygitx demo utilities")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    gen = sub.add_parser("generate", help="create a throwaway repo with sample commits (persists path)")
+    gen = sub.add_parser("init", help="create a throwaway repo with sample commits (persists path)")
     gen.add_argument("--dest", type=Path, help="destination directory (default: temp dir)")
     gen.add_argument("--no-persist", action="store_true", help="do not persist generated repo path")
 
@@ -102,7 +102,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    if args.cmd == "generate":
+    if args.cmd == "init":
         path = generate_repo(args.dest, persist=not args.no_persist)
         print(f"Repo created at: {path}")
         print("Branches:")

@@ -12,18 +12,30 @@ Cross-platform Git history access implemented in Rust with a Python API via PyO3
 - `Repo.squash_last(count, mode="squash", message=None)` to squash the latest commits (or fixup-style).
 - Vendored libgit2 for predictable, cross-platform builds.
 
-## Quick start (editable install)
+## Quick start (editable install with uv)
 ```bash
-python3 -m venv .venv
+uv venv
 source .venv/bin/activate
-python -m pip install -U pip maturin
-maturin develop
+uv pip install -U maturin
+uv run maturin develop --features python-extension
+```
+
+Or use the Makefile helpers (requires `uv` installed):
+```bash
+make venv
+source .venv/bin/activate
+make install
+make develop
 ```
 
 ## Build a wheel
 Uses the `python-extension` feature via `pyproject.toml`:
 ```bash
-maturin build --release
+uv run --with maturin -- maturin build --features python-extension --release
+```
+Or via Makefile:
+```bash
+make release
 ```
 
 ## Python usage
@@ -63,7 +75,8 @@ Example script: `examples/demo.py` (see `--help` for options to generate a demo 
 ## Development
 - Default tests (no Python runtime needed): `cargo test`
 - Python-facing tests: `cargo test --features python-tests`
-- Build docs (HTML): `python -m venv .venv && source .venv/bin/activate && pip install sphinx sphinx_rtd_theme && sphinx-build -b html docs docs/_build/html`
+- Build docs (HTML): `source .venv/bin/activate && make docs` (installs `docs/requirements.txt` via uv, then runs sphinx)
+- Make targets: `make venv`, `make install`, `make develop`, `make release`, `make docs`, `make test`, `make clean`, `make cleancargo`, `make cleanvenv`
 
 ## Notes / future
 - ABI3 wheel targeting Python 3.9+ (`abi3-py39`).
