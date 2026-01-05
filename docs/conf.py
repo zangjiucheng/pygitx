@@ -22,6 +22,8 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
+html_logo = os.path.abspath(os.path.join(__file__, "..", "..", ".github", "icon.png"))
+html_css_files = ["custom.css"]
 
 # We describe the Python surface manually (not relying on importing the extension at build time).
 autodoc_mock_imports = ["pygitx"]

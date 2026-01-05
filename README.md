@@ -1,4 +1,4 @@
-# PyGitX
+![PyGitX icon](.github/icon.png)
 
 [![pypi](https://img.shields.io/pypi/v/pygitx.svg)](https://pypi.org/project/pygitx/)
 [![coverage](https://img.shields.io/codecov/c/github/zangjiucheng/pygitx)](https://codecov.io/gh/zangjiucheng/pygitx)
