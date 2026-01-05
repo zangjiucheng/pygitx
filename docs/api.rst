@@ -90,6 +90,18 @@ Classes
 
       Reword an arbitrary commit on the current branch (linear history only). Traverses the first-parent chain from HEAD to the target and replays commits with the updated message.
 
+   .. py:method:: list_branches(local: bool = True, remote: bool = False) -> list[str]
+
+      List branch names. Control inclusion with ``local``/``remote`` flags.
+
+   .. py:method:: list_tags() -> list[str]
+
+      List tag names (lightweight/annotated).
+
+   .. py:method:: current_branch() -> str | None
+
+      Return the current branch name, or ``None`` if detached/unborn.
+
    .. py:method:: rewrite_author(commit_id: str, new_name: str, new_email: str, update_committer: bool = True) -> RewriteResult
 
       Amend HEAD with a new author (and committer if ``update_committer``). ``commit_id`` must resolve to HEAD.
@@ -124,6 +136,18 @@ Functions
 .. py:function:: pygitx.rev_parse(repo: Repo | str, spec: str) -> str
 
    Resolve a revision spec to a hex object id. Accepts typical git rev syntax (``HEAD``, ``HEAD~N``, branches, tags, short/full oids).
+
+.. py:function:: pygitx.list_branches(repo: Repo | str, local: bool = True, remote: bool = False) -> list[str]
+
+   List branch names (local/remote controlled by flags).
+
+.. py:function:: pygitx.list_tags(repo: Repo | str) -> list[str]
+
+   List tag names.
+
+.. py:function:: pygitx.current_branch(repo: Repo | str) -> str | None
+
+   Return the current branch name, or ``None`` if detached/unborn.
 
 .. py:function:: pygitx.reword(repo: Repo | str, commit_id: str, new_message: str) -> RewriteResult
 

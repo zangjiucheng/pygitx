@@ -32,6 +32,11 @@ print("HEAD:", head.id if head else "None")
 # Resolve a revision (branch/tag/oid) to a hex id
 print("main ->", repo.rev_parse("main"))
 
+# Branches and tags
+print("Branches:", repo.list_branches(local=True, remote=False))
+print("Tags:", repo.list_tags())
+print("Current branch:", repo.current_branch())
+
 for c in repo.list_commits(max=5):
     print(f"{c.id[:7]} {c.author} <{c.email}> {c.summary}")
 ```

@@ -160,6 +160,28 @@ def test_keep_path_wrapper(tmp_path: Path) -> None:
         assert all(p == "a.txt" for p in paths)
 
 
+def test_list_branches_tags_and_current_branch(tmp_path: Path) -> None:
+    repo_path = init_repo(tmp_path)
+    base = commit_file(repo_path, "base")
+    tip = commit_file(repo_path, "tip")
+
+    run_git(repo_path, "branch", "feature")
+    run_git(repo_path, "tag", "-a", "v1.0", "-m", "v1.0", base)
+    run_git(repo_path, "update-ref", "refs/remotes/origin/main", tip)
+
+    py_repo = pygitx.open_repo(str(repo_path))
+    locals_default = pygitx.list_branches(py_repo)
+    assert "main" in locals_default and "feature" in locals_default
+
+    remotes = pygitx.list_branches(py_repo, local=False, remote=True)
+    assert any("origin" in r for r in remotes)
+
+    tags = pygitx.list_tags(py_repo)
+    assert "v1.0" in tags
+
+    assert pygitx.current_branch(py_repo) == "main"
+
+
 def test_rebase_branch_wrapper_validates_and_runs(tmp_path: Path) -> None:
     repo_path = init_repo(tmp_path)
     base = commit_file(repo_path, "base")

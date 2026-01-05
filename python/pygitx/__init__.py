@@ -26,6 +26,9 @@ __all__ = [
     "head",
     "rev_parse",
     "reword",
+    "list_branches",
+    "list_tags",
+    "current_branch",
     "list_commits",
     "change_commit_message",
     "rewrite_author",
@@ -77,9 +80,24 @@ def list_commits(repo: Repo | str, max: Optional[int] = None) -> list[CommitInfo
     return _ensure_repo(repo).list_commits(max)
 
 
+def list_branches(repo: Repo | str, local: bool = True, remote: bool = False) -> list[str]:
+    """List branch names (local/remote controlled by flags)."""
+    return _ensure_repo(repo).list_branches(local, remote)
+
+
+def list_tags(repo: Repo | str) -> list[str]:
+    """List tag names."""
+    return _ensure_repo(repo).list_tags()
+
+
 def head(repo: Repo | str) -> Optional[CommitInfo]:
     """Return HEAD commit info."""
     return _ensure_repo(repo).head()
+
+
+def current_branch(repo: Repo | str) -> Optional[str]:
+    """Return the current branch name, or None if detached/unborn."""
+    return _ensure_repo(repo).current_branch()
 
 
 def rev_parse(repo: Repo | str, spec: str) -> str:
