@@ -7,7 +7,7 @@ set -e
 echo "[pygitx] Run local checks? (make develop, make test, pytest)"
 echo "[pygitx] Note: Make sure .venv is activated before proceeding."
 
-# If there is no TTY on stdout (common in hooks), auto-run checks.
+# If stdout is a TTY, prompt the user; otherwise auto-run checks (common in hooks).
 if [ -t 1 ]; then
     printf "Run checks? [y/N]: "
     read </dev/tty answer
