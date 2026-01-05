@@ -1,0 +1,42 @@
+#!/bin/sh
+# Optional pre-commit helper for pygitx.
+# Prompts to run local checks before committing.
+
+set -e
+
+echo "[pygitx] Run local checks? (make develop, make test, pytest)"
+echo "[pygitx] Note: Make sure .venv is activated before proceeding."
+
+# If there is no TTY on stdout (common in hooks), auto-run checks.
+if [ -t 1 ]; then
+    printf "Run checks? [y/N]: "
+    read </dev/tty answer
+else
+    echo "[pygitx] No TTY detected; running checks non-interactively."
+    answer="y"
+fi
+
+case "$answer" in
+    y|Y|yes|YES)
+        echo "[pygitx] Running make develop..."
+        if ! make develop; then
+            echo "[pygitx] make develop failed; aborting commit." >&2
+            exit 1
+        fi
+        echo "[pygitx] Running make test..."
+        if ! make test; then
+            echo "[pygitx] make test failed; aborting commit." >&2
+            exit 1
+        fi
+        echo "[pygitx] Running pytest..."
+        if ! pytest; then
+            echo "[pygitx] pytest failed; aborting commit." >&2
+            exit 1
+        fi
+        ;;
+    *)
+        echo "[pygitx] Skipping checks; continuing commit."
+        ;;
+esac
+
+exit 0

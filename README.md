@@ -57,3 +57,4 @@ Or browse the published docs if available in your environment.
 - Tests without Python runtime: `cargo test`
 - Python-facing tests: `cargo test --features python-tests`
 - Make targets: `make venv`, `make install`, `make develop`, `make release`, `make docs`, `make test`
+- Optional pre-commit prompt: set `git config core.hooksPath .githooks` and `chmod +x .githooks/pre-commit` to be prompted to run `make develop`, `make test`, and `pytest` before each commit.
