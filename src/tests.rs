@@ -549,6 +549,54 @@ fn list_branches_tags_and_current_branch() {
 }
 
 #[test]
+fn repo_summary_reports_info() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    let base = create_commit_on_ref_with_path(&repo, "HEAD", &[], "a.txt", "base", "a1");
+    let tip = create_commit_on_ref_with_path(&repo, "HEAD", &[base], "b.txt", "tip", "b1");
+    repo.tag_lightweight("v1.0", &repo.find_object(base, Some(ObjectType::Commit)).unwrap(), false)
+        .unwrap();
+    let py_repo = PyRepo { repo };
+
+    let summary = py_repo.repo_summary().unwrap();
+    assert!(summary.branch.is_some());
+    assert_eq!(summary.head, Some(tip.to_string()[0..7].to_string()));
+    assert!(summary.commits >= 2);
+    assert!(summary.tags >= 1);
+    assert!(summary.branches >= 1);
+    assert!(!summary.is_dirty);
+    assert!(summary.files >= 2);
+}
+
+#[test]
+fn repo_summary_reports_dirty_and_detached() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    let base = create_commit_on_ref_with_path(&repo, "HEAD", &[], "a.txt", "base", "a1");
+    let _tip = create_commit_on_ref_with_path(&repo, "HEAD", &[base], "b.txt", "tip", "b1");
+
+    // Dirty: add untracked file.
+    std::fs::write(dir.path().join("untracked.txt"), "x").unwrap();
+
+    let py_repo = PyRepo { repo };
+    let summary_dirty = py_repo.repo_summary().unwrap();
+    assert!(summary_dirty.is_dirty);
+    assert!(summary_dirty.branch.is_some());
+
+    // Detach HEAD.
+    let head_oid = Oid::from_str(&py_repo.head().unwrap().unwrap().id).unwrap();
+    py_repo
+        .repo
+        .set_head_detached(head_oid)
+        .expect("detach head");
+    let summary_detached = py_repo.repo_summary().unwrap();
+    assert!(summary_detached.branch.is_none());
+    assert!(summary_detached.head.is_some());
+}
+
+#[test]
 fn create_backup_ref_creates_backup_refs() {
     init_python();
     let dir = tempdir().unwrap();

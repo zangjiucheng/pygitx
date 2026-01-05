@@ -16,13 +16,16 @@ CommitInfo = _native.CommitInfo
 RewriteResult = _native.RewriteResult
 Repo = _native.Repo
 open_repo = _native.open_repo
+RepoSummary = _native.RepoSummary
 
 __all__ = [
     "CommitInfo",
     "RewriteResult",
     "Repo",
     "open_repo",
+    "RepoSummary",
     "create_backup_ref",
+    "summary",
     "head",
     "rev_parse",
     "reword",
@@ -112,6 +115,11 @@ def reword(repo: Repo | str, commit_id: str, new_message: str) -> RewriteResult:
     if not new_message.strip():
         raise ValueError("new_message cannot be empty")
     return _ensure_repo(repo).reword(commit_id, new_message)
+
+
+def summary(repo: Repo | str) -> RepoSummary:
+    """Return a summary of the repository (path, branch, head, counts, size, dirty flag)."""
+    return _ensure_repo(repo).summary()
 
 
 def filter_commits(

@@ -89,6 +89,29 @@ def test_reword_wrapper(tmp_path: Path) -> None:
     assert "reworded middle" in log.splitlines()[1]
 
 
+def test_repo_summary_and_str(tmp_path: Path) -> None:
+    repo_path = init_repo(tmp_path)
+    commit_file(repo_path, "a1", "a.txt", "a1")
+    commit_file(repo_path, "b1", "b.txt", "b1")
+
+    py_repo = pygitx.open_repo(str(repo_path))
+    summary = py_repo.summary()
+    assert summary.branch is not None
+    assert summary.commits >= 2
+    assert summary.files >= 2
+
+    rendered = str(py_repo)
+    assert "branch" in rendered
+    assert "commits" in rendered
+    assert "dirty" in rendered
+
+    # Module-level helper
+    summary2 = pygitx.summary(py_repo)
+    assert summary2.branch == summary.branch
+    summary3 = pygitx.summary(str(repo_path))
+    assert summary3.branch == summary.branch
+
+
 def test_rewrite_author_wrapper_validates_and_updates(tmp_path: Path) -> None:
     repo_path = init_repo(tmp_path)
     commit_id = commit_file(repo_path, "initial")

@@ -52,3 +52,9 @@ current_branch
 ``Repo.current_branch() -> str | None``
 
 Return the current branch name, or ``None`` if detached/unborn.
+
+summary
+-------
+``Repo.summary() -> RepoSummary``
+
+Return a summary object with key repo stats. ``__str__``/``__repr__`` on ``Repo`` display this summary.

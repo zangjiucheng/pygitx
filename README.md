@@ -39,6 +39,9 @@ print("Current branch:", repo.current_branch())
 
 for c in repo.list_commits(max=5):
     print(f"{c.id[:7]} {c.author} <{c.email}> {c.summary}")
+
+# Quick repo summary (also printed by str(repo))
+print(repo.summary())
 ```
 
 Example script: `examples/demo.py` (run with `--help` to see options).
@@ -54,3 +57,4 @@ Or browse the published docs if available in your environment.
 - Tests without Python runtime: `cargo test`
 - Python-facing tests: `cargo test --features python-tests`
 - Make targets: `make venv`, `make install`, `make develop`, `make release`, `make docs`, `make test`
+- Optional pre-commit prompt: set `git config core.hooksPath .githooks` and `chmod +x .githooks/pre-commit` to be prompted to run `make develop`, `make test`, and `pytest` before each commit.

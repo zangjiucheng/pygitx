@@ -2,6 +2,67 @@ use git2::{Commit, Oid};
 use pyo3::prelude::*;
 use std::collections::HashMap;
 
+/// Summary of repository information for display.
+#[pyclass(name = "RepoSummary")]
+pub struct PyRepoSummary {
+    #[pyo3(get)]
+    pub path: String,
+    #[pyo3(get)]
+    pub head: Option<String>,
+    #[pyo3(get)]
+    pub branch: Option<String>,
+    #[pyo3(get)]
+    pub commits: usize,
+    #[pyo3(get)]
+    pub branches: usize,
+    #[pyo3(get)]
+    pub tags: usize,
+    #[pyo3(get)]
+    pub remotes: usize,
+    #[pyo3(get)]
+    pub authors: usize,
+    #[pyo3(get)]
+    pub files: usize,
+    #[pyo3(get)]
+    pub size_kb: usize,
+    #[pyo3(get)]
+    pub is_dirty: bool,
+    #[pyo3(get)]
+    pub last_commit_time: Option<i64>,
+}
+
+impl PyRepoSummary {
+    pub fn new(
+        path: String,
+        head: Option<String>,
+        branch: Option<String>,
+        commits: usize,
+        branches: usize,
+        tags: usize,
+        remotes: usize,
+        authors: usize,
+        files: usize,
+        size_kb: usize,
+        is_dirty: bool,
+        last_commit_time: Option<i64>,
+    ) -> Self {
+        Self {
+            path,
+            head,
+            branch,
+            commits,
+            branches,
+            tags,
+            remotes,
+            authors,
+            files,
+            size_kb,
+            is_dirty,
+            last_commit_time,
+        }
+    }
+}
+
 /// Result of a history rewrite operation.
 #[pyclass(name = "RewriteResult")]
 #[derive(Default)]
