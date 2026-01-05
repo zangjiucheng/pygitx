@@ -12,7 +12,7 @@ Cross-platform Git history access implemented in Rust with a Python API via PyO3
 ## Highlights
 - Fast Git history access via libgit2 with a lightweight Python wrapper.
 - Repo helpers for HEAD info, revision parsing, commit listing, and branch/tag lookup.
-- History rewriting tools: amend messages, rewrite author/committer, squash, rebase (pick-only), drop commits, and purge paths.
+- History rewriting tools: amend messages, rewrite author/committer, reword arbitrary commits, squash, rebase (pick-only), drop commits, and purge paths.
 - All rewrites return a `RewriteResult` with mappings and ref updates.
 
 ## Install

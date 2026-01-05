@@ -15,6 +15,12 @@ rewrite_author
 
 Rewrite the author (and optionally committer) of HEAD.
 
+reword
+------
+``Repo.reword(commit_id: str, new_message: str) -> RewriteResult``
+
+Reword an arbitrary commit on the current branch (linear history only). Traverses the first-parent chain from HEAD to the target, rewrites that commit's message, and replays the rest.
+
 squash_last
 -----------
 ``Repo.squash_last(count: int, mode: str = "squash", message: str | None = None) -> RewriteResult``

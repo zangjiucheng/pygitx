@@ -485,7 +485,48 @@ fn create_backup_ref_creates_backup_refs() {
 fn init_python() {
     // Initialize the embedded Python interpreter once for PyO3-bound types used in tests.
     static INIT: std::sync::Once = std::sync::Once::new();
-    INIT.call_once(Python::initialize);
+    INIT.call_once(|| {
+        if std::env::var_os("PYTHONHOME").is_none() {
+            if let Some((home, paths)) = detect_python_env() {
+                unsafe {
+                    std::env::set_var("PYTHONHOME", &home);
+                    if std::env::var_os("PYTHONPATH").is_none() {
+                        std::env::set_var("PYTHONPATH", paths);
+                    }
+                }
+            }
+        }
+        Python::initialize();
+    });
+}
+
+fn detect_python_env() -> Option<(String, String)> {
+    // Prefer explicit Python from env (PYO3_PYTHON) else python3.
+    let candidate = std::env::var("PYO3_PYTHON").unwrap_or_else(|_| "python3".to_string());
+    let output = std::process::Command::new(candidate)
+        .arg("-c")
+        .arg(
+            r#"import sys, sysconfig; print(sys.base_prefix); print(sysconfig.get_path('stdlib') or ''); print(sysconfig.get_path('platlib') or '')"#,
+        )
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut lines = stdout.lines();
+    let home = lines.next()?.trim().to_string();
+    let stdlib = lines.next().unwrap_or("").trim();
+    let platlib = lines.next().unwrap_or("").trim();
+    let mut joined = Vec::new();
+    if !stdlib.is_empty() {
+        joined.push(stdlib);
+    }
+    if !platlib.is_empty() {
+        joined.push(platlib);
+    }
+    let path_val = joined.join(":");
+    Some((home, path_val))
 }
 
 fn create_commit_on_ref(

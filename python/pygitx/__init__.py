@@ -25,6 +25,7 @@ __all__ = [
     "create_backup_ref",
     "head",
     "rev_parse",
+    "reword",
     "list_commits",
     "change_commit_message",
     "rewrite_author",
@@ -85,6 +86,13 @@ def rev_parse(repo: Repo | str, spec: str) -> str:
     if not spec.strip():
         raise ValueError("spec cannot be empty")
     return _ensure_repo(repo).rev_parse(spec)
+
+
+def reword(repo: Repo | str, commit_id: str, new_message: str) -> RewriteResult:
+    """Reword an arbitrary commit on the current branch (linear history only)."""
+    if not new_message.strip():
+        raise ValueError("new_message cannot be empty")
+    return _ensure_repo(repo).reword(commit_id, new_message)
 
 
 def filter_commits(
