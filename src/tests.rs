@@ -466,6 +466,45 @@ fn remove_path_purges_files_from_history() {
 }
 
 #[test]
+fn reword_updates_arbitrary_commit() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    let base = create_commit_on_ref(&repo, "HEAD", &[], "base", "base");
+    let middle = create_commit_on_ref(&repo, "HEAD", &[base], "middle", "mid");
+    let tip = create_commit_on_ref(&repo, "HEAD", &[middle], "tip", "tip");
+    let mut py_repo = PyRepo { repo };
+
+    let result = py_repo.reword(&middle.to_string(), "rewritten middle").unwrap();
+    assert!(result.old_to_new.get(&middle).is_some());
+    let head = py_repo.head().unwrap().unwrap();
+    assert_ne!(head.id, tip.to_string());
+    let middle_new = result.old_to_new.get(&middle).copied().unwrap();
+    let rewritten = py_repo.repo.find_commit(middle_new).unwrap();
+    assert_eq!(rewritten.message().unwrap_or("").trim(), "rewritten middle");
+}
+
+#[test]
+fn keep_path_rewrites_history() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    let a1 = create_commit_on_ref_with_path(&repo, "HEAD", &[], "a.txt", "add a", "a1");
+    let b1 = create_commit_on_ref_with_path(&repo, "HEAD", &[a1], "b.txt", "add b", "b1");
+    let _a2 = create_commit_on_ref_with_path(&repo, "HEAD", &[b1], "a.txt", "update a", "a2");
+    let mut py_repo = PyRepo { repo };
+
+    let result = Python::attach(|py| py_repo.keep_path(py, "a.txt")).unwrap();
+    assert!(!result.old_to_new.is_empty());
+
+    let head = py_repo.head().unwrap().unwrap();
+    let commit = py_repo.repo.find_commit(Oid::from_str(&head.id).unwrap()).unwrap();
+    let tree = commit.tree().unwrap();
+    assert!(tree.get_name("a.txt").is_some());
+    assert!(tree.get_name("b.txt").is_none());
+}
+
+#[test]
 fn create_backup_ref_creates_backup_refs() {
     init_python();
     let dir = tempdir().unwrap();

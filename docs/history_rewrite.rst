@@ -44,3 +44,9 @@ remove_path
 ``Repo.remove_path(path_pattern: str) -> RewriteResult``
 
 Purge a path (glob pattern) from all commits reachable from HEAD. Linear history only.
+
+keep_path
+---------
+``Repo.keep_path(glob_pattern: str) -> RewriteResult``
+
+Keep only paths matching the glob across history; everything else is dropped from rewritten commits. Linear history only.

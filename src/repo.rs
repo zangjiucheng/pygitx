@@ -463,6 +463,120 @@ impl PyRepo {
         ))
     }
 
+    /// Keep only paths matching the glob across history (drop everything else) and rewrite commits.
+    ///
+    /// Args:
+    ///     glob_pattern (str): Glob-style pattern relative to repo root (e.g., "src/**" or "docs/*.md").
+    ///
+    /// Returns:
+    ///     RewriteResult: Mapping of rewritten commits and updated refs (HEAD/branch).
+    ///
+    /// Notes:
+    ///     - Currently supports linear history (merge commits emit an error).
+    ///     - This rewrites history; branch ref/HEAD are updated to the rewritten tip.
+    #[pyo3(text_signature = "($self, glob_pattern)")]
+    pub fn keep_path(&mut self, py: Python<'_>, glob_pattern: &str) -> PyResult<RewriteResult> {
+        py.detach(move || self.keep_path_internal(glob_pattern))
+    }
+
+    fn keep_path_internal(&mut self, glob_pattern: &str) -> PyResult<RewriteResult> {
+        let matcher = build_globset(glob_pattern)?;
+        let head_commit = self.resolve_head_commit()?;
+        let backup_refs = collect_head_refs(&self.repo)?;
+        let backup_root = create_backup_refs(&self.repo, &backup_refs, None)?;
+        let mut revwalk = self
+            .repo
+            .revwalk()
+            .map_err(|err| py_git_err("failed to create revwalk", err))?;
+        revwalk
+            .push(head_commit.id())
+            .map_err(|err| py_git_err("failed to start revwalk from HEAD", err))?;
+        let _ = revwalk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::REVERSE);
+
+        let mut mapping: HashMap<Oid, Oid> = HashMap::new();
+
+        for oid_result in revwalk {
+            let oid = oid_result
+                .map_err(|err| py_git_err("failed to read commit id from revwalk", err))?;
+            let commit = self
+                .repo
+                .find_commit(oid)
+                .map_err(|err| py_git_err("failed to load commit", err))?;
+
+            if commit.parent_count() > 1 {
+                return Err(PyValueError::new_err(
+                    "keep_path currently supports linear history only (merge commit encountered)",
+                ));
+            }
+
+            let mut new_parents = Vec::new();
+            for i in 0..commit.parent_count() {
+                let parent = commit
+                    .parent(i)
+                    .map_err(|err| py_git_err("failed to load parent during keep_path", err))?;
+                let rewritten_parent = mapping
+                    .get(&parent.id())
+                    .ok_or_else(|| PyValueError::new_err("missing parent mapping during keep_path"))?;
+                let parent_commit = self
+                    .repo
+                    .find_commit(*rewritten_parent)
+                    .map_err(|err| py_git_err("failed to load rewritten parent", err))?;
+                new_parents.push(parent_commit);
+            }
+
+            let tree = commit
+                .tree()
+                .map_err(|err| py_git_err("failed to load commit tree", err))?;
+            let maybe_new_tree = rewrite_tree_keep_paths(&self.repo, &tree, &matcher, Path::new(""))?;
+            let final_tree = match maybe_new_tree {
+                Some(oid) => self
+                    .repo
+                    .find_tree(oid)
+                    .map_err(|err| py_git_err("failed to load rewritten tree", err))?,
+                None => {
+                    // If nothing matches, create an empty tree.
+                    let builder = self
+                        .repo
+                        .treebuilder(None)
+                        .map_err(|err| py_git_err("failed to create empty tree", err))?;
+                    let empty = builder
+                        .write()
+                        .map_err(|err| py_git_err("failed to write empty tree", err))?;
+                    self.repo
+                        .find_tree(empty)
+                        .map_err(|err| py_git_err("failed to load empty tree", err))?
+                }
+            };
+
+            let parent_refs: Vec<&Commit> = new_parents.iter().collect();
+            let new_oid = self
+                .repo
+                .commit(
+                    None,
+                    &commit.author(),
+                    &commit.committer(),
+                    commit.message().unwrap_or(""),
+                    &final_tree,
+                    &parent_refs,
+                )
+                .map_err(|err| py_git_err("failed to create rewritten commit", err))?;
+
+            mapping.insert(commit.id(), new_oid);
+        }
+
+        let new_head_oid = mapping
+            .get(&head_commit.id())
+            .ok_or_else(|| PyValueError::new_err("failed to resolve rewritten HEAD"))?;
+        let updated_refs = update_head(&self.repo, *new_head_oid)?;
+
+        Ok(RewriteResult::with_maps(
+            mapping,
+            updated_refs,
+            Vec::new(),
+            Some(backup_root),
+        ))
+    }
+
     /// Amend the message of the HEAD commit.
     ///
     /// Args:
@@ -1161,4 +1275,68 @@ fn rewrite_tree_without_paths(
     } else {
         Ok(None)
     }
+}
+
+fn rewrite_tree_keep_paths(
+    repo: &Repository,
+    tree: &Tree<'_>,
+    matcher: &GlobSet,
+    base: &Path,
+) -> PyResult<Option<Oid>> {
+    // Build a new tree containing only entries that match the glob (or contain matching descendants).
+    let mut builder = repo
+        .treebuilder(None)
+        .map_err(|err| py_git_err("failed to create treebuilder", err))?;
+    let mut kept_any = false;
+
+    for entry in tree.iter() {
+        let name = match entry.name() {
+            Some(n) => n,
+            None => continue,
+        };
+        let full_path = base.join(name);
+        let path_str = full_path.to_string_lossy();
+
+        match entry.kind() {
+            Some(ObjectType::Tree) => {
+                // If the directory matches directly, keep it intact.
+                if matcher.is_match(path_str.as_ref()) {
+                    builder
+                        .insert(name, entry.id(), entry.filemode())
+                        .map_err(|err| py_git_err("failed to keep matching tree", err))?;
+                    kept_any = true;
+                    continue;
+                }
+                let child_tree = repo
+                    .find_tree(entry.id())
+                    .map_err(|err| py_git_err("failed to load subtree", err))?;
+                if let Some(new_child_oid) =
+                    rewrite_tree_keep_paths(repo, &child_tree, matcher, &full_path)?
+                {
+                    builder
+                        .insert(name, new_child_oid, entry.filemode())
+                        .map_err(|err| py_git_err("failed to insert rewritten subtree", err))?;
+                    kept_any = true;
+                }
+            }
+            Some(_) => {
+                if matcher.is_match(path_str.as_ref()) {
+                    builder
+                        .insert(name, entry.id(), entry.filemode())
+                        .map_err(|err| py_git_err("failed to keep matching entry", err))?;
+                    kept_any = true;
+                }
+            }
+            None => continue,
+        }
+    }
+
+    if !kept_any {
+        return Ok(None);
+    }
+
+    let oid = builder
+        .write()
+        .map_err(|err| py_git_err("failed to write rewritten tree", err))?;
+    Ok(Some(oid))
 }

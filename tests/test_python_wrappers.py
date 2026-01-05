@@ -141,6 +141,25 @@ def test_filter_and_remove_path_wrappers_validate_and_run(tmp_path: Path) -> Non
         assert b"fatal" in stderr or b"exists" in stderr
 
 
+def test_keep_path_wrapper(tmp_path: Path) -> None:
+    repo_path = init_repo(tmp_path)
+    commit_file(repo_path, "a1", "a.txt", "a1")
+    commit_file(repo_path, "b1", "b.txt", "b1")
+    commit_file(repo_path, "a2", "a.txt", "a2")
+
+    with pytest.raises(ValueError):
+        pygitx.keep_path(repo_path, "")
+
+    result = pygitx.keep_path(repo_path, "a.txt")
+    assert result.old_to_new
+    rewritten = set(result.old_to_new.values())
+    for oid in rewritten:
+        paths = subprocess.check_output(
+            ["git", "ls-tree", "-r", "--name-only", oid], cwd=repo_path, text=True
+        ).strip().splitlines()
+        assert all(p == "a.txt" for p in paths)
+
+
 def test_rebase_branch_wrapper_validates_and_runs(tmp_path: Path) -> None:
     repo_path = init_repo(tmp_path)
     base = commit_file(repo_path, "base")
