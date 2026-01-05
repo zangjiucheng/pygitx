@@ -9,6 +9,7 @@
   <title>API Reference &mdash; PyGitX 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ee7fcff9" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
@@ -19,7 +20,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="Usage" href="usage.html" /> 
+    <link rel="prev" title="Backups" href="backups.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -32,6 +33,7 @@
           
           <a href="index.html" class="icon icon-home">
             PyGitX
+              <img src="_static/icon.png" class="logo" alt="Logo"/>
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -41,8 +43,14 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
+              <p class="caption" role="heading"><span class="caption-text">Navigation</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="repository.html">Repository basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="revision_parsing.html">Revision parsing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="history_rewrite.html">History rewriting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backups.html">Backups</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#module-pygitx">Module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#classes">Classes</a><ul>
@@ -63,8 +71,10 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#pygitx.pygitx.Repo"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.Repo.head"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo.head()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.Repo.rev_parse"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo.rev_parse()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.Repo.list_commits"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo.list_commits()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.Repo.change_commit_message"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo.change_commit_message()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.Repo.reword"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo.reword()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.Repo.rewrite_author"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo.rewrite_author()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.Repo.filter_commits"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo.filter_commits()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pygitx.pygitx.Repo.remove_path"><code class="docutils literal notranslate"><span class="pre">pygitx.Repo.remove_path()</span></code></a></li>
@@ -77,6 +87,8 @@
 <li class="toctree-l2"><a class="reference internal" href="#functions">Functions</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#pygitx.pygitx.open_repo"><code class="docutils literal notranslate"><span class="pre">pygitx.open_repo()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#pygitx.pygitx.create_backup_ref"><code class="docutils literal notranslate"><span class="pre">pygitx.create_backup_ref()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pygitx.pygitx.rev_parse"><code class="docutils literal notranslate"><span class="pre">pygitx.rev_parse()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pygitx.pygitx.reword"><code class="docutils literal notranslate"><span class="pre">pygitx.reword()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -109,11 +121,18 @@
              
   <section id="api-reference">
 <h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading"></a></h1>
+<nav class="contents local" id="contents">
+<ul class="simple">
+<li><p><a class="reference internal" href="#module-pygitx" id="id1">Module</a></p></li>
+<li><p><a class="reference internal" href="#classes" id="id2">Classes</a></p></li>
+<li><p><a class="reference internal" href="#functions" id="id3">Functions</a></p></li>
+</ul>
+</nav>
 <section id="module-pygitx">
-<span id="module"></span><h2>Module<a class="headerlink" href="#module-pygitx" title="Link to this heading"></a></h2>
+<span id="module"></span><h2><a class="toc-backref" href="#id1" role="doc-backlink">Module</a><a class="headerlink" href="#module-pygitx" title="Link to this heading"></a></h2>
 </section>
 <section id="classes">
-<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">Classes</a><a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="pygitx.pygitx.CommitInfo">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pygitx.</span></span><span class="sig-name descname"><span class="pre">CommitInfo</span></span><a class="headerlink" href="#pygitx.pygitx.CommitInfo" title="Link to this definition"></a></dt>
@@ -191,6 +210,12 @@
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="pygitx.pygitx.Repo.rev_parse">
+<span class="sig-name descname"><span class="pre">rev_parse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#pygitx.pygitx.Repo.rev_parse" title="Link to this definition"></a></dt>
+<dd><p>Resolve a revision string (e.g., <code class="docutils literal notranslate"><span class="pre">HEAD</span></code>, <code class="docutils literal notranslate"><span class="pre">HEAD~1</span></code>, branch/tag, or full/short oid) to a hex object id.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="pygitx.pygitx.Repo.list_commits">
 <span class="sig-name descname"><span class="pre">list_commits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pygitx.pygitx.CommitInfo" title="pygitx.pygitx.CommitInfo"><span class="pre">CommitInfo</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pygitx.pygitx.Repo.list_commits" title="Link to this definition"></a></dt>
 <dd><p>Commits reachable from HEAD (newest first). Pass <code class="docutils literal notranslate"><span class="pre">max</span></code> to limit results.</p>
@@ -200,6 +225,12 @@
 <dt class="sig sig-object py" id="pygitx.pygitx.Repo.change_commit_message">
 <span class="sig-name descname"><span class="pre">change_commit_message</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">commit_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pygitx.pygitx.RewriteResult" title="pygitx.pygitx.RewriteResult"><span class="pre">RewriteResult</span></a></span></span><a class="headerlink" href="#pygitx.pygitx.Repo.change_commit_message" title="Link to this definition"></a></dt>
 <dd><p>Amend HEAD with a new message (rewrites history). <code class="docutils literal notranslate"><span class="pre">commit_id</span></code> must resolve to HEAD.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pygitx.pygitx.Repo.reword">
+<span class="sig-name descname"><span class="pre">reword</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">commit_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pygitx.pygitx.RewriteResult" title="pygitx.pygitx.RewriteResult"><span class="pre">RewriteResult</span></a></span></span><a class="headerlink" href="#pygitx.pygitx.Repo.reword" title="Link to this definition"></a></dt>
+<dd><p>Reword an arbitrary commit on the current branch (linear history only). Traverses the first-parent chain from HEAD to the target and replays commits with the updated message.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -236,7 +267,7 @@
 
 </section>
 <section id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">Functions</a><a class="headerlink" href="#functions" title="Link to this heading"></a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="pygitx.pygitx.open_repo">
 <span class="sig-prename descclassname"><span class="pre">pygitx.</span></span><span class="sig-name descname"><span class="pre">open_repo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">os.PathLike</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pygitx.pygitx.Repo" title="pygitx.pygitx.Repo"><span class="pre">Repo</span></a></span></span><a class="headerlink" href="#pygitx.pygitx.open_repo" title="Link to this definition"></a></dt>
@@ -249,6 +280,18 @@
 <dd><p>Create backup refs under <code class="docutils literal notranslate"><span class="pre">refs/pygitx/backup/&lt;timestamp&gt;</span></code> for HEAD and its branch (if attached).</p>
 </dd></dl>
 
+<dl class="py function">
+<dt class="sig sig-object py" id="pygitx.pygitx.rev_parse">
+<span class="sig-prename descclassname"><span class="pre">pygitx.</span></span><span class="sig-name descname"><span class="pre">rev_parse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">repo</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pygitx.pygitx.Repo" title="pygitx.pygitx.Repo"><span class="pre">Repo</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#pygitx.pygitx.rev_parse" title="Link to this definition"></a></dt>
+<dd><p>Resolve a revision spec to a hex object id. Accepts typical git rev syntax (<code class="docutils literal notranslate"><span class="pre">HEAD</span></code>, <code class="docutils literal notranslate"><span class="pre">HEAD~N</span></code>, branches, tags, short/full oids).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pygitx.pygitx.reword">
+<span class="sig-prename descclassname"><span class="pre">pygitx.</span></span><span class="sig-name descname"><span class="pre">reword</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">repo</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pygitx.pygitx.Repo" title="pygitx.pygitx.Repo"><span class="pre">Repo</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">commit_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pygitx.pygitx.RewriteResult" title="pygitx.pygitx.RewriteResult"><span class="pre">RewriteResult</span></a></span></span><a class="headerlink" href="#pygitx.pygitx.reword" title="Link to this definition"></a></dt>
+<dd><p>Reword an arbitrary commit on the current branch (linear history only).</p>
+</dd></dl>
+
 </section>
 </section>
 
@@ -256,7 +299,7 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="usage.html" class="btn btn-neutral float-left" title="Usage" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="backups.html" class="btn btn-neutral float-left" title="Backups" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 
   <hr/>

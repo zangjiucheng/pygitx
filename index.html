@@ -9,6 +9,7 @@
   <title>PyGitX &mdash; PyGitX 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ee7fcff9" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
@@ -19,7 +20,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Usage" href="usage.html" /> 
+    <link rel="next" title="Installation" href="installation.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -32,6 +33,7 @@
           
           <a href="#" class="icon icon-home">
             PyGitX
+              <img src="_static/icon.png" class="logo" alt="Logo"/>
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -41,8 +43,14 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <p class="caption" role="heading"><span class="caption-text">Navigation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="repository.html">Repository basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="revision_parsing.html">Revision parsing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="history_rewrite.html">History rewriting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backups.html">Backups</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
 </ul>
 
@@ -73,33 +81,48 @@
   <section id="pygitx">
 <h1>PyGitX<a class="headerlink" href="#pygitx" title="Link to this heading"></a></h1>
 <p>Python bindings for Git history access, powered by Rust and libgit2.</p>
+<section id="what-is-it">
+<h2>What is it?<a class="headerlink" href="#what-is-it" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Fast, cross-platform Git operations via libgit2.</p></li>
+<li><p>Python wrapper around a small Rust core; heavy lifting stays in Rust.</p></li>
+<li><p>Tools for reading commits, resolving revisions, and rewriting history (amend, rewrite author, squash, rebase, filter, remove paths).</p></li>
+</ul>
+</section>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>PyPI: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pygitx</span></code></p></li>
+<li><p>Dev/editable: see <code class="docutils literal notranslate"><span class="pre">README</span></code> for venv/maturin steps.</p></li>
+</ul>
+</section>
+<section id="get-started">
+<h2>Get started<a class="headerlink" href="#get-started" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Try the demo: <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">examples/demo.py</span> <span class="pre">--help</span></code> to generate a sample repo, list commits, or exercise rewriting commands.</p></li>
+<li><p>Build docs locally: <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">docs</span></code> (HTML at <code class="docutils literal notranslate"><span class="pre">docs/_build/html</span></code>).</p></li>
+</ul>
 <p>Contents:</p>
 <div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Navigation</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="usage.html#quick-start">Quick start</a></li>
-<li class="toctree-l2"><a class="reference internal" href="usage.html#history-rewriting-head-only">History rewriting (HEAD-only)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="usage.html#squashing-commits">Squashing commits</a></li>
-<li class="toctree-l2"><a class="reference internal" href="usage.html#rebasing-a-branch">Rebasing a branch</a></li>
-<li class="toctree-l2"><a class="reference internal" href="usage.html#filtering-history">Filtering history</a></li>
-<li class="toctree-l2"><a class="reference internal" href="usage.html#example-script">Example script</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="api.html#module-pygitx">Module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#classes">Classes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#functions">Functions</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="repository.html">Repository basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="revision_parsing.html">Revision parsing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="history_rewrite.html">History rewriting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backups.html">Backups</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
 </ul>
 </div>
+</section>
 </section>
 
 
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="usage.html" class="btn btn-neutral float-right" title="Usage" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="installation.html" class="btn btn-neutral float-right" title="Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

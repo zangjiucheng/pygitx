@@ -9,6 +9,7 @@
   <title>Usage &mdash; PyGitX 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ee7fcff9" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
@@ -19,8 +20,8 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="API Reference" href="api.html" />
-    <link rel="prev" title="PyGitX" href="index.html" /> 
+    <link rel="next" title="Repository basics" href="repository.html" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -33,6 +34,7 @@
           
           <a href="index.html" class="icon icon-home">
             PyGitX
+              <img src="_static/icon.png" class="logo" alt="Logo"/>
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -42,16 +44,14 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Usage</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#quick-start">Quick start</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#history-rewriting-head-only">History rewriting (HEAD-only)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#squashing-commits">Squashing commits</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#rebasing-a-branch">Rebasing a branch</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#filtering-history">Filtering history</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#example-script">Example script</a></li>
-</ul>
-</li>
+              <p class="caption" role="heading"><span class="caption-text">Navigation</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="repository.html">Repository basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="revision_parsing.html">Revision parsing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="history_rewrite.html">History rewriting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backups.html">Backups</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
 </ul>
 
@@ -81,101 +81,24 @@
              
   <section id="usage">
 <h1>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h1>
-<section id="quick-start">
-<h2>Quick start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
-<p>Create a venv and install in editable mode:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
-<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
-pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>pip<span class="w"> </span>setuptools<span class="w"> </span>wheel<span class="w"> </span>maturin
-pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
-</pre></div>
-</div>
-<p>Or use the Makefile helpers:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>venv
-<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
-make<span class="w"> </span>install
-make<span class="w"> </span>develop
-</pre></div>
-</div>
-<p>Open a repository and read commits (or use <code class="docutils literal notranslate"><span class="pre">examples/demo.py</span> <span class="pre">generate</span></code> to create a sample repo):</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pygitx</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-
-<span class="n">repo</span> <span class="o">=</span> <span class="n">pygitx</span><span class="o">.</span><span class="n">open_repo</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">))</span>
-<span class="n">head</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;HEAD:&quot;</span><span class="p">,</span> <span class="n">head</span><span class="o">.</span><span class="n">id</span> <span class="k">if</span> <span class="n">head</span> <span class="k">else</span> <span class="s2">&quot;None&quot;</span><span class="p">)</span>
-
-<span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">repo</span><span class="o">.</span><span class="n">list_commits</span><span class="p">(</span><span class="nb">max</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
-    <span class="n">email</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">email</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
-    <span class="n">summary</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">summary</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">id</span><span class="p">[:</span><span class="mi">7</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">author</span><span class="si">}</span><span class="s2"> &lt;</span><span class="si">{</span><span class="n">email</span><span class="si">}</span><span class="s2">&gt; </span><span class="si">{</span><span class="n">summary</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-</section>
-<section id="history-rewriting-head-only">
-<h2>History rewriting (HEAD-only)<a class="headerlink" href="#history-rewriting-head-only" title="Link to this heading"></a></h2>
-<p>Both <cite>change_commit_message</cite> and <cite>rewrite_author</cite> operate on the HEAD commit and
-replace it with a new commit:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">head</span><span class="p">:</span>
-    <span class="n">updated</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">change_commit_message</span><span class="p">(</span><span class="n">head</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">&quot;new message for HEAD&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Amended message mapping:&quot;</span><span class="p">,</span> <span class="n">updated</span><span class="o">.</span><span class="n">old_to_new</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Updated refs:&quot;</span><span class="p">,</span> <span class="n">updated</span><span class="o">.</span><span class="n">updated_refs</span><span class="p">)</span>
-
-    <span class="n">updated</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">rewrite_author</span><span class="p">(</span><span class="n">head</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">&quot;New Name&quot;</span><span class="p">,</span> <span class="s2">&quot;new@example.com&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Amended author mapping:&quot;</span><span class="p">,</span> <span class="n">updated</span><span class="o">.</span><span class="n">old_to_new</span><span class="p">)</span>
-</pre></div>
-</div>
-<p><strong>Warning:</strong> These operations rewrite history. Avoid using them on published
-branches unless you are prepared to force-push and coordinate with consumers.</p>
-</section>
-<section id="squashing-commits">
-<h2>Squashing commits<a class="headerlink" href="#squashing-commits" title="Link to this heading"></a></h2>
-<p>Collapse the latest commits into one. Use <code class="docutils literal notranslate"><span class="pre">mode=&quot;squash&quot;</span></code> (default) to concatenate messages, or
-<code class="docutils literal notranslate"><span class="pre">mode=&quot;fixup&quot;</span></code> to keep only the oldest message.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">squashed</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">squash_last</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;squash&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Squashed mapping:&quot;</span><span class="p">,</span> <span class="n">squashed</span><span class="o">.</span><span class="n">old_to_new</span><span class="p">)</span>
-</pre></div>
-</div>
-</section>
-<section id="rebasing-a-branch">
-<h2>Rebasing a branch<a class="headerlink" href="#rebasing-a-branch" title="Link to this heading"></a></h2>
-<p>Replay a branch on top of a new base (pick-only):</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">updated_commits</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">rebase_branch</span><span class="p">(</span><span class="s2">&quot;feature&quot;</span><span class="p">,</span> <span class="s2">&quot;main&quot;</span><span class="p">)</span>
-<span class="k">for</span> <span class="n">old</span><span class="p">,</span> <span class="n">new</span> <span class="ow">in</span> <span class="n">updated_commits</span><span class="o">.</span><span class="n">old_to_new</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">old</span><span class="p">[:</span><span class="mi">7</span><span class="p">]</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">new</span><span class="p">[:</span><span class="mi">7</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Conflicts will abort the rebase and raise an error; resolve manually and retry
-if needed.</p>
-</section>
-<section id="filtering-history">
-<h2>Filtering history<a class="headerlink" href="#filtering-history" title="Link to this heading"></a></h2>
-<p>Drop commits by author or message substring:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">mapping</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">filter_commits</span><span class="p">(</span><span class="n">author</span><span class="o">=</span><span class="s2">&quot;bad actor&quot;</span><span class="p">,</span> <span class="n">message_contains</span><span class="o">=</span><span class="s2">&quot;wip&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">mapping</span><span class="o">.</span><span class="n">old_to_new</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Remove a path (glob) from all commits:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">purged</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">remove_path</span><span class="p">(</span><span class="s2">&quot;secrets/*.txt&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">purged</span><span class="o">.</span><span class="n">old_to_new</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Notes:
-- Filtering/removal currently supports linear history (merge commits are rejected).
-- Author/email/message matching is case-insensitive; path matching uses globs.</p>
-</section>
-<section id="example-script">
-<h2>Example script<a class="headerlink" href="#example-script" title="Link to this heading"></a></h2>
-<p><cite>examples/demo.py</cite> bundles the above: generate a repo, list commits, amend messages, rewrite author, and rebase (run with <code class="docutils literal notranslate"><span class="pre">--help</span></code>).</p>
-</section>
+<p>This section is intentionally slim for now. Use the reference pages for details.</p>
+<ul class="simple">
+<li><p>Install: see <a class="reference internal" href="installation.html"><span class="doc">Installation</span></a>.</p></li>
+<li><p>Explore commands quickly with <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">examples/demo.py</span> <span class="pre">--help</span></code> (generate a sample repo, list commits, try rewrites).</p></li>
+<li><p>Reference:
+- <a class="reference internal" href="repository.html"><span class="doc">Repository basics</span></a> for opening repos, HEAD, and commit listing.
+- <a class="reference internal" href="revision_parsing.html"><span class="doc">Revision parsing</span></a> for resolving git rev specs.
+- <a class="reference internal" href="history_rewrite.html"><span class="doc">History rewriting</span></a> for amend/rewrite/squash/rebase/filter/remove-path flows.
+- <a class="reference internal" href="backups.html"><span class="doc">Backups</span></a> for creating backup refs.</p></li>
+</ul>
 </section>
 
 
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="index.html" class="btn btn-neutral float-left" title="PyGitX" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="api.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="repository.html" class="btn btn-neutral float-right" title="Repository basics" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

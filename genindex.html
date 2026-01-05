@@ -8,6 +8,7 @@
   <title>Index &mdash; PyGitX 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ee7fcff9" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
@@ -30,6 +31,7 @@
           
           <a href="index.html" class="icon icon-home">
             PyGitX
+              <img src="_static/icon.png" class="logo" alt="Logo"/>
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -39,8 +41,14 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <p class="caption" role="heading"><span class="caption-text">Navigation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="repository.html">Repository basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="revision_parsing.html">Revision parsing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="history_rewrite.html">History rewriting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backups.html">Backups</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
 </ul>
 
@@ -181,13 +189,17 @@
       </ul></li>
       <li><a href="api.html#pygitx.pygitx.CommitInfo">pygitx.CommitInfo (class in pygitx)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#pygitx.pygitx.create_backup_ref">pygitx.create_backup_ref() (in module pygitx)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#pygitx.pygitx.open_repo">pygitx.open_repo() (in module pygitx)</a>
 </li>
       <li><a href="api.html#pygitx.pygitx.Repo">pygitx.Repo (class in pygitx)</a>
+</li>
+      <li><a href="api.html#pygitx.pygitx.rev_parse">pygitx.rev_parse() (in module pygitx)</a>
+</li>
+      <li><a href="api.html#pygitx.pygitx.reword">pygitx.reword() (in module pygitx)</a>
 </li>
       <li><a href="api.html#pygitx.pygitx.RewriteResult">pygitx.RewriteResult (class in pygitx)</a>
 </li>
@@ -199,9 +211,13 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api.html#pygitx.pygitx.Repo.rebase_branch">rebase_branch() (pygitx.pygitx.Repo method)</a>
 </li>
+      <li><a href="api.html#pygitx.pygitx.Repo.remove_path">remove_path() (pygitx.pygitx.Repo method)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api.html#pygitx.pygitx.Repo.remove_path">remove_path() (pygitx.pygitx.Repo method)</a>
+      <li><a href="api.html#pygitx.pygitx.Repo.rev_parse">rev_parse() (pygitx.pygitx.Repo method)</a>
+</li>
+      <li><a href="api.html#pygitx.pygitx.Repo.reword">reword() (pygitx.pygitx.Repo method)</a>
 </li>
       <li><a href="api.html#pygitx.pygitx.Repo.rewrite_author">rewrite_author() (pygitx.pygitx.Repo method)</a>
 </li>
