@@ -1,0 +1,4 @@
+.wy-side-nav-search .logo img,
+.wy-side-nav-search img.logo {
+  filter: brightness(0) invert(1);
+}
