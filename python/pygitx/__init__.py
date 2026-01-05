@@ -31,6 +31,7 @@ __all__ = [
     "rewrite_author",
     "filter_commits",
     "remove_path",
+    "keep_path",
     "rebase_branch",
     "squash_last",
 ]
@@ -113,6 +114,14 @@ def remove_path(repo: Repo | str, path_pattern: str) -> RewriteResult:
     if not path_pattern:
         raise ValueError("path_pattern cannot be empty")
     return repo_obj.remove_path(path_pattern)
+
+
+def keep_path(repo: Repo | str, glob_pattern: str) -> RewriteResult:
+    """Keep only paths matching the glob across history (linear history only)."""
+    repo_obj = _ensure_repo(repo)
+    if not glob_pattern:
+        raise ValueError("glob_pattern cannot be empty")
+    return repo_obj.keep_path(glob_pattern)
 
 
 def rebase_branch(repo: Repo | str, branch: str, onto: str) -> RewriteResult:

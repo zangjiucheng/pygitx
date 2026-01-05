@@ -141,3 +141,21 @@ def test_reword_arbitrary_commit(tmp_path: Path) -> None:
     log = run_git(repo, "log", "--pretty=%s")
     # Newest is rewritten tip, second line should be rewritten middle
     assert "rewritten middle" in log.splitlines()[1]
+
+
+def test_keep_path_rewrites_history(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path)
+    a1 = commit_file(repo, "add a", "a.txt", "a1")
+    b1 = commit_file(repo, "add b", "b.txt", "b1")
+    a2 = commit_file(repo, "update a", "a.txt", "a2")
+
+    py_repo = pygitx.open_repo(str(repo))
+    result = py_repo.keep_path("a.txt")
+    assert result.old_to_new
+
+    rewritten = set(result.old_to_new.values())
+    for oid in rewritten:
+        paths = subprocess.check_output(
+            ["git", "ls-tree", "-r", "--name-only", oid], cwd=repo, text=True
+        ).strip().splitlines()
+        assert all(p == "a.txt" for p in paths)
