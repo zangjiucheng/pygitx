@@ -66,6 +66,35 @@ Classes
 
       Non-fatal warnings emitted during the rewrite.
 
+.. py:class:: pygitx.RepoSummary
+
+   Lightweight summary of a repository.
+
+   .. py:attribute:: path
+      :type: str
+   .. py:attribute:: head
+      :type: str | None
+   .. py:attribute:: branch
+      :type: str | None
+   .. py:attribute:: commits
+      :type: int
+   .. py:attribute:: branches
+      :type: int
+   .. py:attribute:: tags
+      :type: int
+   .. py:attribute:: remotes
+      :type: int
+   .. py:attribute:: authors
+      :type: int
+   .. py:attribute:: files
+      :type: int
+   .. py:attribute:: size_kb
+      :type: int
+   .. py:attribute:: is_dirty
+      :type: bool
+   .. py:attribute:: last_commit_time
+      :type: int | None
+
 .. py:class:: pygitx.Repo
 
    Thin wrapper around a git repository.
@@ -73,6 +102,10 @@ Classes
    .. py:method:: head() -> CommitInfo | None
 
       Return the current HEAD commit, or None if HEAD is unborn/detached without a commit.
+
+   .. py:method:: summary() -> RepoSummary
+
+      Return a structured summary (also used by ``__str__``/``__repr__``).
 
    .. py:method:: rev_parse(spec: str) -> str
 
@@ -133,6 +166,10 @@ Functions
 
    Create backup refs under ``refs/pygitx/backup/<timestamp>`` for HEAD and its branch (if attached).
 
+.. py:function:: pygitx.summary(repo: Repo | str) -> RepoSummary
+
+   Return a structured repository summary.
+
 .. py:function:: pygitx.rev_parse(repo: Repo | str, spec: str) -> str
 
    Resolve a revision spec to a hex object id. Accepts typical git rev syntax (``HEAD``, ``HEAD~N``, branches, tags, short/full oids).
@@ -152,3 +189,27 @@ Functions
 .. py:function:: pygitx.reword(repo: Repo | str, commit_id: str, new_message: str) -> RewriteResult
 
    Reword an arbitrary commit on the current branch (linear history only).
+
+.. py:function:: pygitx.change_commit_message(repo: Repo | str, commit_id: str, new_message: str) -> RewriteResult
+
+   Amend HEAD with a new message (rewrites history).
+
+.. py:function:: pygitx.rewrite_author(repo: Repo | str, commit_id: str, new_name: str, new_email: str, update_committer: bool = True) -> RewriteResult
+
+   Amend HEAD with a new author (and committer if ``update_committer``).
+
+.. py:function:: pygitx.filter_commits(repo: Repo | str, author: str | None = None, message_contains: str | None = None) -> RewriteResult
+
+   Drop commits matching author or message substring; merge commits are rejected.
+
+.. py:function:: pygitx.remove_path(repo: Repo | str, path_pattern: str) -> RewriteResult
+
+   Purge a path (glob) from all commits reachable from HEAD.
+
+.. py:function:: pygitx.rebase_branch(repo: Repo | str, branch: str, onto: str) -> RewriteResult
+
+   Rebase a branch onto a new base (pick-only).
+
+.. py:function:: pygitx.squash_last(repo: Repo | str, count: int, mode: str = "squash", message: str | None = None) -> RewriteResult
+
+   Squash the most recent commits into one.

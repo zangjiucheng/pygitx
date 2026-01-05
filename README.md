@@ -39,6 +39,9 @@ print("Current branch:", repo.current_branch())
 
 for c in repo.list_commits(max=5):
     print(f"{c.id[:7]} {c.author} <{c.email}> {c.summary}")
+
+# Quick repo summary (also printed by str(repo))
+print(repo.summary())
 ```
 
 Example script: `examples/demo.py` (run with `--help` to see options).
