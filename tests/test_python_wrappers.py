@@ -108,6 +108,8 @@ def test_repo_summary_and_str(tmp_path: Path) -> None:
     # Module-level helper
     summary2 = pygitx.summary(py_repo)
     assert summary2.branch == summary.branch
+    summary3 = pygitx.summary(str(repo_path))
+    assert summary3.branch == summary.branch
 
 
 def test_rewrite_author_wrapper_validates_and_updates(tmp_path: Path) -> None:

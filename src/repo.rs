@@ -1571,12 +1571,17 @@ fn summarize_repo(repo: &Repository) -> PyResult<PyRepoSummary> {
 fn count_tree_entries(repo: &Repository, tree: &Tree<'_>) -> PyResult<usize> {
     let mut count = 0usize;
     for entry in tree.iter() {
-        count += 1;
-        if let Some(ObjectType::Tree) = entry.kind() {
-            let child = repo
-                .find_tree(entry.id())
-                .map_err(|err| py_git_err("failed to load subtree", err))?;
-            count += count_tree_entries(repo, &child)?;
+        match entry.kind() {
+            Some(ObjectType::Blob) => {
+                count += 1;
+            }
+            Some(ObjectType::Tree) => {
+                let child = repo
+                    .find_tree(entry.id())
+                    .map_err(|err| py_git_err("failed to load subtree", err))?;
+                count += count_tree_entries(repo, &child)?;
+            }
+            _ => {}
         }
     }
     Ok(count)
