@@ -71,6 +71,94 @@ impl PyRepo {
         Ok(Some(PyCommitInfo::from_commit(&commit)))
     }
 
+    /// List branches.
+    ///
+    /// Args:
+    ///     local (bool): Include local branches.
+    ///     remote (bool): Include remote branches.
+    ///
+    /// Returns:
+    ///     list[str]: Branch names.
+    #[pyo3(text_signature = "($self, local=True, remote=False)", signature = (local = true, remote = false))]
+    pub fn list_branches(&self, local: bool, remote: bool) -> PyResult<Vec<String>> {
+        if !local && !remote {
+            return Err(PyValueError::new_err(
+                "must request at least one of local or remote branches",
+            ));
+        }
+        let mut names = HashSet::new();
+        if local {
+            let branches = self
+                .repo
+                .branches(Some(BranchType::Local))
+                .map_err(|err| py_git_err("failed to list local branches", err))?;
+            for branch in branches {
+                let (branch, _) = branch.map_err(|err| py_git_err("failed to read branch", err))?;
+                if let Some(name) = branch
+                    .name()
+                    .map_err(|err| py_git_err("failed to read branch name", err))?
+                {
+                    names.insert(name.to_string());
+                }
+            }
+        }
+        if remote {
+            let branches = self
+                .repo
+                .branches(Some(BranchType::Remote))
+                .map_err(|err| py_git_err("failed to list remote branches", err))?;
+            for branch in branches {
+                let (branch, _) = branch.map_err(|err| py_git_err("failed to read branch", err))?;
+                if let Some(name) = branch
+                    .name()
+                    .map_err(|err| py_git_err("failed to read remote branch name", err))?
+                {
+                    names.insert(name.to_string());
+                }
+            }
+        }
+        let mut out: Vec<String> = names.into_iter().collect();
+        out.sort();
+        Ok(out)
+    }
+
+    /// List tag names.
+    ///
+    /// Returns:
+    ///     list[str]: Tag names.
+    #[pyo3(text_signature = "($self)")]
+    pub fn list_tags(&self) -> PyResult<Vec<String>> {
+        let names = self
+            .repo
+            .tag_names(None)
+            .map_err(|err| py_git_err("failed to list tags", err))?;
+        let mut out = Vec::new();
+        for i in 0..names.len() {
+            if let Some(name) = names.get(i) {
+                out.push(name.to_string());
+            }
+        }
+        Ok(out)
+    }
+
+    /// Return the current branch name, or None if detached/unborn.
+    #[pyo3(text_signature = "($self)")]
+    pub fn current_branch(&self) -> PyResult<Option<String>> {
+        let head = match self.repo.head() {
+            Ok(h) => h,
+            Err(err)
+                if err.code() == ErrorCode::UnbornBranch || err.code() == ErrorCode::NotFound =>
+            {
+                return Ok(None)
+            }
+            Err(err) => return Err(py_git_err("failed to read HEAD", err)),
+        };
+        if !head.is_branch() {
+            return Ok(None);
+        }
+        Ok(head.shorthand().map(|s| s.to_string()))
+    }
+
     /// Resolve a revision spec to an object id (hex).
     ///
     /// Args:

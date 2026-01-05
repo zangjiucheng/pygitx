@@ -1,5 +1,5 @@
 use crate::repo::{PyRepo, open_repo};
-use git2::{BranchType, Commit, Oid, Repository, Signature, build::CheckoutBuilder};
+use git2::{BranchType, Commit, Oid, Repository, Signature, ObjectType, build::CheckoutBuilder};
 use pyo3::Python;
 use pyo3::exceptions::PyValueError;
 use pyo3::types::PyAnyMethods;
@@ -502,6 +502,50 @@ fn keep_path_rewrites_history() {
     let tree = commit.tree().unwrap();
     assert!(tree.get_name("a.txt").is_some());
     assert!(tree.get_name("b.txt").is_none());
+}
+
+#[test]
+fn list_branches_tags_and_current_branch() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    let base = create_commit_on_ref(&repo, "HEAD", &[], "base", "base");
+    let tip = create_commit_on_ref(&repo, "HEAD", &[base], "tip", "tip");
+
+    // Create an additional local branch.
+    {
+        let base_commit = repo.find_commit(base).unwrap();
+        repo.branch("feature", &base_commit, false).unwrap();
+    }
+
+    // Create a remote-tracking ref.
+    repo.reference("refs/remotes/origin/master", tip, true, "remote ref")
+        .unwrap();
+
+    // Tag the base.
+    {
+        let obj = repo
+            .find_object(base, Some(ObjectType::Commit))
+            .unwrap();
+        repo.tag_lightweight("v1.0", &obj, false).unwrap();
+    }
+
+    let py_repo = PyRepo { repo };
+    let current = py_repo.current_branch().unwrap().expect("branch");
+
+    let locals = py_repo.list_branches(true, false).unwrap();
+    assert!(locals.contains(&current));
+    assert!(locals.contains(&"feature".to_string()));
+    assert!(!locals.iter().any(|n| n.starts_with("origin/")));
+
+    let remotes = py_repo.list_branches(false, true).unwrap();
+    assert!(remotes.iter().any(|n| n.contains("origin")));
+
+    let tags = py_repo.list_tags().unwrap();
+    assert!(tags.contains(&"v1.0".to_string()));
+
+    // current_branch should remain unchanged after other operations.
+    assert_eq!(py_repo.current_branch().unwrap(), Some(current));
 }
 
 #[test]

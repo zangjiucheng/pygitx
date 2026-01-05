@@ -4,6 +4,8 @@ import os
 import subprocess
 from pathlib import Path
 
+import pytest
+
 import pygitx
 
 
@@ -159,3 +161,24 @@ def test_keep_path_rewrites_history(tmp_path: Path) -> None:
             ["git", "ls-tree", "-r", "--name-only", oid], cwd=repo, text=True
         ).strip().splitlines()
         assert all(p == "a.txt" for p in paths)
+
+
+def test_list_branches_tags_and_current_branch_flow(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path)
+    base = commit_file(repo, "base")
+    tip = commit_file(repo, "tip")
+    run_git(repo, "branch", "feature")
+    run_git(repo, "tag", "-a", "v1.0", "-m", "v1.0", base)
+    run_git(repo, "update-ref", "refs/remotes/origin/main", tip)
+
+    py_repo = pygitx.open_repo(str(repo))
+    locals_default = py_repo.list_branches()
+    assert "main" in locals_default and "feature" in locals_default
+
+    remotes = py_repo.list_branches(False, True)
+    assert any("origin" in r for r in remotes)
+
+    tags = py_repo.list_tags()
+    assert "v1.0" in tags
+
+    assert py_repo.current_branch() == "main"

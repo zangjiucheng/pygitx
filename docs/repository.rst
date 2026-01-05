@@ -30,3 +30,25 @@ Commits reachable from HEAD (newest first). Pass ``max`` to limit results.
 
    for c in repo.list_commits(max=5):
        print(f"{c.id[:7]} {c.summary}")
+
+list_branches
+-------------
+``Repo.list_branches(local: bool = True, remote: bool = False) -> list[str]``
+
+List branch names. Control inclusion with ``local``/``remote`` flags.
+
+.. code-block:: python
+
+   print(repo.list_branches(local=True, remote=False))
+
+list_tags
+---------
+``Repo.list_tags() -> list[str]``
+
+List tag names (lightweight or annotated).
+
+current_branch
+--------------
+``Repo.current_branch() -> str | None``
+
+Return the current branch name, or ``None`` if detached/unborn.

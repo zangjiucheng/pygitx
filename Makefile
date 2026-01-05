@@ -15,7 +15,7 @@ help:
 	@echo "  cleanvenv  - remove local .venv"
 
 venv:
-	@if [ -d .venv ]; then echo ".venv already exists; skipping creation"; else $(UV) venv; fi
+	@if [ -d .venv ]; then echo ".venv already exists; skipping creation"; else $(UV) venv --python 3.13; fi
 	
 install:
 	$(UV) pip install --upgrade pip setuptools wheel maturin pytest pytest-cov
