@@ -52,6 +52,14 @@
 <li class="toctree-l2"><a class="reference internal" href="#open-repo">open_repo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#head">head</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#list-commits">list_commits</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#list-branches">list_branches</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#list-tags">list_tags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#current-branch">current_branch</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#summary">summary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#graph-helpers">Graph helpers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#diff-stat">diff_stat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#refs-tui">refs_tui</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#log-tui">log_tui</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="revision_parsing.html">Revision parsing</a></li>
@@ -109,6 +117,57 @@
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">id</span><span class="p">[:</span><span class="mi">7</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">summary</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+</section>
+<section id="list-branches">
+<h2>list_branches<a class="headerlink" href="#list-branches" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Repo.list_branches(local:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True,</span> <span class="pre">remote:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False)</span> <span class="pre">-&gt;</span> <span class="pre">list[str]</span></code></p>
+<p>List branch names. Control inclusion with <code class="docutils literal notranslate"><span class="pre">local</span></code>/<code class="docutils literal notranslate"><span class="pre">remote</span></code> flags.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">repo</span><span class="o">.</span><span class="n">list_branches</span><span class="p">(</span><span class="n">local</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">remote</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+</pre></div>
+</div>
+</section>
+<section id="list-tags">
+<h2>list_tags<a class="headerlink" href="#list-tags" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Repo.list_tags()</span> <span class="pre">-&gt;</span> <span class="pre">list[str]</span></code></p>
+<p>List tag names (lightweight or annotated).</p>
+</section>
+<section id="current-branch">
+<h2>current_branch<a class="headerlink" href="#current-branch" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Repo.current_branch()</span> <span class="pre">-&gt;</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span></code></p>
+<p>Return the current branch name, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if detached/unborn.</p>
+</section>
+<section id="summary">
+<h2>summary<a class="headerlink" href="#summary" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Repo.summary()</span> <span class="pre">-&gt;</span> <span class="pre">RepoSummary</span></code></p>
+<p>Return a summary object with key repo stats. <code class="docutils literal notranslate"><span class="pre">__str__</span></code>/<code class="docutils literal notranslate"><span class="pre">__repr__</span></code> on <code class="docutils literal notranslate"><span class="pre">Repo</span></code> display this summary.</p>
+</section>
+<section id="graph-helpers">
+<h2>Graph helpers<a class="headerlink" href="#graph-helpers" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Repo.merge_base(a_spec:</span> <span class="pre">str,</span> <span class="pre">b_spec:</span> <span class="pre">str)</span> <span class="pre">-&gt;</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span></code></p>
+<p>Compute merge base between two revisions (hex oid or None if none).</p>
+<p><code class="docutils literal notranslate"><span class="pre">Repo.is_ancestor(a_spec:</span> <span class="pre">str,</span> <span class="pre">b_spec:</span> <span class="pre">str)</span> <span class="pre">-&gt;</span> <span class="pre">bool</span></code></p>
+<p>Return True if <code class="docutils literal notranslate"><span class="pre">a_spec</span></code> is an ancestor of <code class="docutils literal notranslate"><span class="pre">b_spec</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Repo.ahead_behind(a_spec:</span> <span class="pre">str,</span> <span class="pre">b_spec:</span> <span class="pre">str)</span> <span class="pre">-&gt;</span> <span class="pre">tuple[int,</span> <span class="pre">int]</span></code></p>
+<p>Return (ahead, behind) counts comparing <code class="docutils literal notranslate"><span class="pre">a_spec</span></code> to <code class="docutils literal notranslate"><span class="pre">b_spec</span></code>.</p>
+</section>
+<section id="diff-stat">
+<h2>diff_stat<a class="headerlink" href="#diff-stat" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Repo.diff_stat(a_spec:</span> <span class="pre">str,</span> <span class="pre">b_spec:</span> <span class="pre">str,</span> <span class="pre">paths:</span> <span class="pre">list[str]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None)</span> <span class="pre">-&gt;</span> <span class="pre">DiffStat</span></code></p>
+<p>Return diff statistics between two revisions. <code class="docutils literal notranslate"><span class="pre">paths</span></code> can limit the diff to specific files. <code class="docutils literal notranslate"><span class="pre">DiffStat</span></code> prints nicely with <code class="docutils literal notranslate"><span class="pre">str()</span></code>/<code class="docutils literal notranslate"><span class="pre">repr()</span></code> to show counts and touched paths.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stats</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">diff_stat</span><span class="p">(</span><span class="s2">&quot;HEAD~1&quot;</span><span class="p">,</span> <span class="s2">&quot;HEAD&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">stats</span><span class="o">.</span><span class="n">files_changed</span><span class="p">,</span> <span class="n">stats</span><span class="o">.</span><span class="n">insertions</span><span class="p">,</span> <span class="n">stats</span><span class="o">.</span><span class="n">deletions</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="refs-tui">
+<h2>refs_tui<a class="headerlink" href="#refs-tui" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">pygitx.refs_tui(repo,</span> <span class="pre">local=True,</span> <span class="pre">remote=False,</span> <span class="pre">tags=True,</span> <span class="pre">max_width=None)</span> <span class="pre">-&gt;</span> <span class="pre">str</span></code></p>
+<p>Render branches/tags in a jj-style table with columns for name, short oid, age, author, and summary. Width is inferred from <code class="docutils literal notranslate"><span class="pre">$COLUMNS</span></code> unless <code class="docutils literal notranslate"><span class="pre">max_width</span></code> is provided.</p>
+</section>
+<section id="log-tui">
+<h2>log_tui<a class="headerlink" href="#log-tui" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">pygitx.log_tui(repo,</span> <span class="pre">rev=&quot;HEAD&quot;,</span> <span class="pre">max_commits=200,</span> <span class="pre">decorate=True,</span> <span class="pre">graph=True,</span> <span class="pre">max_width=None)</span> <span class="pre">-&gt;</span> <span class="pre">str</span></code></p>
+<p>Render a compact oneline log similar to <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">log</span> <span class="pre">--graph</span> <span class="pre">--oneline</span></code> with optional ASCII graph and decorations for HEAD/branches/tags. Limits to <code class="docutils literal notranslate"><span class="pre">max_commits</span></code> entries and truncates to fit <code class="docutils literal notranslate"><span class="pre">max_width</span></code> (or <code class="docutils literal notranslate"><span class="pre">$COLUMNS</span></code>).</p>
 </section>
 </section>
 
