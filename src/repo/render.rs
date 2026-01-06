@@ -320,15 +320,17 @@ fn truncate(s: &str, width: usize) -> String {
         return s.to_string();
     }
     
-    if width <= 1 {
-        return "…".to_string();
+    const ELLIPSIS: char = '…';
+    let ellipsis_width = ELLIPSIS.width().unwrap_or(1);
+    
+    if width <= ellipsis_width {
+        return ELLIPSIS.to_string();
     }
     
     // Build string up to the target width, accounting for display width
-    const ELLIPSIS_WIDTH: usize = 1; // "…" has width 1
     let mut result = String::new();
     let mut current_width = 0;
-    let target_width = width - ELLIPSIS_WIDTH;
+    let target_width = width - ellipsis_width;
     
     for ch in s.chars() {
         let ch_width = ch.width().unwrap_or(0);
@@ -339,14 +341,14 @@ fn truncate(s: &str, width: usize) -> String {
         current_width += ch_width;
     }
     
-    result.push('…');
+    result.push(ELLIPSIS);
     result
 }
 
 fn format_age(commit_secs: i64) -> String {
     let now = Utc::now().timestamp();
     let diff = now.saturating_sub(commit_secs);
-    // Handle negative age (future timestamps) by showing "0s" or "now"
+    // Handle negative age (future timestamps) by showing "0s"
     if diff <= 0 {
         return "0s".to_string();
     }
