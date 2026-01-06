@@ -9,6 +9,9 @@ import pygitx
 
 def run_git(repo: Path, *args: str, env: dict[str, str] | None = None) -> str:
     """Run a git command and return stdout (stripped)."""
+    env = env or os.environ.copy()
+    env.setdefault("GIT_COMMIT_GPGSIGN", "0")
+    env.setdefault("GIT_TAG_GPGSIGN", "0")
     return subprocess.check_output(["git", *args], cwd=repo, text=True, env=env).strip()
 
 

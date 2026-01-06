@@ -129,11 +129,23 @@ Classes
 
    .. py:method:: list_tags() -> list[str]
 
-      List tag names (lightweight/annotated).
+   List tag names (lightweight/annotated).
 
    .. py:method:: current_branch() -> str | None
 
       Return the current branch name, or ``None`` if detached/unborn.
+
+   .. py:method:: merge_base(a_spec: str, b_spec: str) -> str | None
+
+      Compute merge base between two revisions (hex oid or ``None``).
+
+   .. py:method:: is_ancestor(a_spec: str, b_spec: str) -> bool
+
+      Return True if ``a_spec`` is an ancestor of ``b_spec``.
+
+   .. py:method:: ahead_behind(a_spec: str, b_spec: str) -> tuple[int, int]
+
+      Return (ahead, behind) counts comparing ``a_spec`` to ``b_spec``.
 
    .. py:method:: rewrite_author(commit_id: str, new_name: str, new_email: str, update_committer: bool = True) -> RewriteResult
 
@@ -185,6 +197,18 @@ Functions
 .. py:function:: pygitx.current_branch(repo: Repo | str) -> str | None
 
    Return the current branch name, or ``None`` if detached/unborn.
+
+.. py:function:: pygitx.merge_base(repo: Repo | str, a_spec: str, b_spec: str) -> str | None
+
+   Compute merge base between two revisions.
+
+.. py:function:: pygitx.is_ancestor(repo: Repo | str, a_spec: str, b_spec: str) -> bool
+
+   Return True if ``a_spec`` is an ancestor of ``b_spec``.
+
+.. py:function:: pygitx.ahead_behind(repo: Repo | str, a_spec: str, b_spec: str) -> tuple[int, int]
+
+   Return (ahead, behind) counts comparing ``a_spec`` to ``b_spec``.
 
 .. py:function:: pygitx.reword(repo: Repo | str, commit_id: str, new_message: str) -> RewriteResult
 

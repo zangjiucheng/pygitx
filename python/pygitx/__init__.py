@@ -40,6 +40,9 @@ __all__ = [
     "keep_path",
     "rebase_branch",
     "squash_last",
+    "merge_base",
+    "is_ancestor",
+    "ahead_behind",
 ]
 
 
@@ -120,6 +123,30 @@ def reword(repo: Repo | str, commit_id: str, new_message: str) -> RewriteResult:
 def summary(repo: Repo | str) -> RepoSummary:
     """Return a summary of the repository (path, branch, head, counts, size, dirty flag)."""
     return _ensure_repo(repo).summary()
+
+def merge_base(repo: Repo | str, a_spec: str, b_spec: str) -> str | None:
+    """Return merge base (hex oid) between two revisions, or None if none exists."""
+    if not a_spec.strip():
+        raise ValueError("a_spec cannot be empty")
+    if not b_spec.strip():
+        raise ValueError("b_spec cannot be empty")
+    return _ensure_repo(repo).merge_base(a_spec, b_spec)
+
+def is_ancestor(repo: Repo | str, a_spec: str, b_spec: str) -> bool:
+    """Return True if a_spec is ancestor of b_spec."""
+    if not a_spec.strip():
+        raise ValueError("a_spec cannot be empty")
+    if not b_spec.strip():
+        raise ValueError("b_spec cannot be empty")
+    return _ensure_repo(repo).is_ancestor(a_spec, b_spec)
+
+def ahead_behind(repo: Repo | str, a_spec: str, b_spec: str) -> tuple[int, int]:
+    """Return (ahead, behind) counts comparing a_spec to b_spec."""
+    if not a_spec.strip():
+        raise ValueError("a_spec cannot be empty")
+    if not b_spec.strip():
+        raise ValueError("b_spec cannot be empty")
+    return _ensure_repo(repo).ahead_behind(a_spec, b_spec)
 
 
 def filter_commits(
