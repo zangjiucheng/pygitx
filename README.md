@@ -32,16 +32,18 @@ print("HEAD:", head.id if head else "None")
 # Resolve a revision (branch/tag/oid) to a hex id
 print("main ->", repo.rev_parse("main"))
 
-# Branches and tags
-print("Branches:", repo.list_branches(local=True, remote=False))
-print("Tags:", repo.list_tags())
-print("Current branch:", repo.current_branch())
-
 for c in repo.list_commits(max=5):
     print(f"{c.id[:7]} {c.author} <{c.email}> {c.summary}")
 
 # Quick repo summary (also printed by str(repo))
 print(repo.summary())
+
+# Graph helpers
+print("Branches:", repo.list_branches(local=True, remote=False))
+print("Tags:", repo.list_tags())
+print("Current branch:", repo.current_branch())
+print("Merge base of main and feature:", repo.merge_base("main", "feature"))
+print("Ahead/behind main vs feature:", repo.ahead_behind("main", "feature"))
 ```
 
 Example script: `examples/demo.py` (run with `--help` to see options).
@@ -54,7 +56,7 @@ make docs
 Or browse the published docs if available in your environment.
 
 ## Development
-- Tests without Python runtime: `cargo test`
-- Python-facing tests: `cargo test --features python-tests`
+- Run Rust and Python checks: `make test`
+- Pytest for Python wrappers: `pytest`
 - Make targets: `make venv`, `make install`, `make develop`, `make release`, `make docs`, `make test`
 - Optional pre-commit prompt: set `git config core.hooksPath .githooks` and `chmod +x .githooks/pre-commit` to be prompted to run `make develop`, `make test`, and `pytest` before each commit.

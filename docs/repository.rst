@@ -58,3 +58,17 @@ summary
 ``Repo.summary() -> RepoSummary``
 
 Return a summary object with key repo stats. ``__str__``/``__repr__`` on ``Repo`` display this summary.
+
+Graph helpers
+-------------
+``Repo.merge_base(a_spec: str, b_spec: str) -> str | None``
+
+Compute merge base between two revisions (hex oid or None if none).
+
+``Repo.is_ancestor(a_spec: str, b_spec: str) -> bool``
+
+Return True if ``a_spec`` is an ancestor of ``b_spec``.
+
+``Repo.ahead_behind(a_spec: str, b_spec: str) -> tuple[int, int]``
+
+Return (ahead, behind) counts comparing ``a_spec`` to ``b_spec``.

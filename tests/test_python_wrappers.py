@@ -112,6 +112,22 @@ def test_repo_summary_and_str(tmp_path: Path) -> None:
     assert summary3.branch == summary.branch
 
 
+def test_graph_helpers(tmp_path: Path) -> None:
+    repo_path = init_repo(tmp_path)
+    base = commit_file(repo_path, "base")
+    tip = commit_file(repo_path, "tip")
+    commit_file(repo_path, "feature commit")
+    run_git(repo_path, "branch", "feature", base)
+    run_git(repo_path, "checkout", "feature")
+    feat_tip = commit_file(repo_path, "feature tip")
+
+    py_repo = pygitx.open_repo(str(repo_path))
+    assert pygitx.merge_base(py_repo, base, feat_tip) == base
+    assert pygitx.is_ancestor(py_repo, base, feat_tip) is True
+    ahead, behind = pygitx.ahead_behind(py_repo, feat_tip, tip)
+    assert ahead >= 0 and behind >= 0
+
+
 def test_rewrite_author_wrapper_validates_and_updates(tmp_path: Path) -> None:
     repo_path = init_repo(tmp_path)
     commit_id = commit_file(repo_path, "initial")
@@ -203,6 +219,38 @@ def test_list_branches_tags_and_current_branch(tmp_path: Path) -> None:
     assert "v1.0" in tags
 
     assert pygitx.current_branch(py_repo) == "main"
+
+
+def test_graph_helpers(tmp_path: Path) -> None:
+    repo_path = init_repo(tmp_path)
+    base = commit_file(repo_path, "base")
+    commit_file(repo_path, "main1")
+    commit_file(repo_path, "main2")
+
+    # Create feature branch from base and add two commits
+    run_git(repo_path, "branch", "feature", base)
+    run_git(repo_path, "checkout", "feature")
+    commit_file(repo_path, "feature1")
+    feat_tip = commit_file(repo_path, "feature2")
+
+    # Diverge main further
+    run_git(repo_path, "checkout", "main")
+    main_tip = commit_file(repo_path, "main3")
+
+    py_repo = pygitx.open_repo(str(repo_path))
+    # merge base of main tip and feature tip should be base
+    assert pygitx.merge_base(py_repo, main_tip, feat_tip) == base
+    assert pygitx.is_ancestor(py_repo, base, feat_tip) is True
+    assert pygitx.is_ancestor(py_repo, feat_tip, main_tip) is False
+
+    ahead_feat_vs_main, behind_feat_vs_main = pygitx.ahead_behind(py_repo, feat_tip, main_tip)
+    ahead_main_vs_feat, behind_main_vs_feat = pygitx.ahead_behind(py_repo, main_tip, feat_tip)
+
+    # feature has 2 commits not in main; main has 3 not in feature
+    assert ahead_feat_vs_main == 2
+    assert behind_feat_vs_main == 3
+    assert ahead_main_vs_feat == 3
+    assert behind_main_vs_feat == 2
 
 
 def test_rebase_branch_wrapper_validates_and_runs(tmp_path: Path) -> None:

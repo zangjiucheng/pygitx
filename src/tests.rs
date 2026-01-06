@@ -597,6 +597,36 @@ fn repo_summary_reports_dirty_and_detached() {
 }
 
 #[test]
+fn graph_helpers_work() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    let base = create_commit_on_ref(&repo, "HEAD", &[], "base", "base");
+    let main_tip = create_commit_on_ref(&repo, "HEAD", &[base], "main tip", "m1");
+
+    // Create feature branch from base with one extra commit.
+    {
+        let base_commit = repo.find_commit(base).unwrap();
+        repo.branch("feature", &base_commit, false).unwrap();
+    }
+    let feature_tip =
+        create_commit_on_ref(&repo, "refs/heads/feature", &[base], "feature tip", "f1");
+
+    let py_repo = PyRepo { repo };
+
+    let mb = py_repo.merge_base(&base.to_string(), &feature_tip.to_string()).unwrap();
+    assert_eq!(mb, Some(base.to_string()));
+    assert!(py_repo
+        .is_ancestor(&base.to_string(), &feature_tip.to_string())
+        .unwrap());
+
+    let (ahead, behind) = py_repo
+        .ahead_behind(&feature_tip.to_string(), &main_tip.to_string())
+        .unwrap();
+    assert!(ahead > 0 || behind > 0);
+}
+
+#[test]
 fn create_backup_ref_creates_backup_refs() {
     init_python();
     let dir = tempdir().unwrap();

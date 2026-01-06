@@ -29,6 +29,13 @@ impl PyRepo {
             .peel_to_commit()
             .map_err(|err| py_git_err("failed to resolve HEAD to commit", err))
     }
+
+    fn resolve_spec_oid(&self, spec: &str) -> PyResult<Oid> {
+        self.repo
+            .revparse_single(spec)
+            .map(|obj| obj.id())
+            .map_err(|err| PyValueError::new_err(format!("invalid revision spec '{}': {}", spec, err)))
+    }
 }
 
 #[pymethods]
@@ -194,6 +201,38 @@ impl PyRepo {
             return Ok(None);
         }
         Ok(head.shorthand().map(|s| s.to_string()))
+    }
+
+    /// Compute merge base between two revisions.
+    #[pyo3(text_signature = "($self, a_spec, b_spec)")]
+    pub fn merge_base(&self, a_spec: &str, b_spec: &str) -> PyResult<Option<String>> {
+        let a = self.resolve_spec_oid(a_spec)?;
+        let b = self.resolve_spec_oid(b_spec)?;
+        match self.repo.merge_base(a, b) {
+            Ok(oid) => Ok(Some(oid.to_string())),
+            Err(err) if err.code() == ErrorCode::NotFound => Ok(None),
+            Err(err) => Err(py_git_err("failed to compute merge base", err)),
+        }
+    }
+
+    /// Return true if a_spec is ancestor of b_spec.
+    #[pyo3(text_signature = "($self, a_spec, b_spec)")]
+    pub fn is_ancestor(&self, a_spec: &str, b_spec: &str) -> PyResult<bool> {
+        let a = self.resolve_spec_oid(a_spec)?;
+        let b = self.resolve_spec_oid(b_spec)?;
+        self.repo
+            .graph_descendant_of(b, a)
+            .map_err(|err| py_git_err("failed to check ancestry", err))
+    }
+
+    /// Return (ahead, behind) counts comparing two revisions.
+    #[pyo3(text_signature = "($self, a_spec, b_spec)")]
+    pub fn ahead_behind(&self, a_spec: &str, b_spec: &str) -> PyResult<(usize, usize)> {
+        let a = self.resolve_spec_oid(a_spec)?;
+        let b = self.resolve_spec_oid(b_spec)?;
+        self.repo
+            .graph_ahead_behind(a, b)
+            .map_err(|err| py_git_err("failed to compute ahead/behind", err))
     }
 
     /// Resolve a revision spec to an object id (hex).
