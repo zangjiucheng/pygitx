@@ -182,10 +182,11 @@ def test_refs_and_log_tui(tmp_path: Path) -> None:
     run_git(repo_path, "tag", "-a", "v1.0", "-m", "v1.0", main_tip)
 
     refs = pygitx.refs_tui(repo_path)
-    assert "main" in refs and "feature" in refs and "v1.0" in refs
+    assert "main" in refs and "feature" in refs and "tag:v1.0" in refs
     log = pygitx.log_tui(repo_path, max_commits=10)
     assert "*" in log
-    assert "main" in log or "feature" in log
+    # Verify that at least one branch name appears in decoration context (within square brackets)
+    assert ("[main" in log or "main]" in log or "[feature" in log or "feature]" in log)
     assert main_tip[:7] in log or feature_tip[:7] in log
     with pytest.raises(ValueError):
         pygitx.refs_tui(repo_path, local=False, remote=False, tags=False)

@@ -3,6 +3,15 @@ use chrono::Utc;
 use git2::{BranchType, ErrorCode, Oid, Repository};
 use pyo3::prelude::*;
 use std::collections::{HashMap, HashSet};
+use unicode_width::UnicodeWidthStr;
+
+// Column widths for refs table output
+const REF_NAME_WIDTH: usize = 22;
+const REF_OID_WIDTH: usize = 7;
+const REF_AGE_WIDTH: usize = 6;
+const REF_AUTHOR_WIDTH: usize = 16;
+// Number of single-space separators between the 5 columns (name, oid, age, author, summary)
+const REF_SEPARATORS: usize = 4;
 
 struct RefRow {
     name: String,
@@ -37,26 +46,26 @@ pub(super) fn render_refs(
 
     rows.sort_by(|a, b| a.name.cmp(&b.name));
 
-    let name_w = 22usize;
-    let oid_w = 7usize;
-    let age_w = 6usize;
-    let author_w = 16usize;
-    let fixed = name_w + oid_w + age_w + author_w + 4;
-    let summary_w = width.saturating_sub(fixed);
+    // Total width of all fixed-width columns plus REF_SEPARATORS single-space separators between the 5 columns.
+    let fixed_columns_width = REF_NAME_WIDTH + REF_OID_WIDTH + REF_AGE_WIDTH + REF_AUTHOR_WIDTH + REF_SEPARATORS;
+    // Ensure there is always at least one character available for the summary
+    let min_width = fixed_columns_width + 1;
+    let effective_width = if width < min_width { min_width } else { width };
+    let summary_w = effective_width - fixed_columns_width;
 
     let mut out = String::new();
     for row in rows {
         let line = format!(
             "{:<name_w$} {:<oid_w$} {:<age_w$} {:<author_w$} {}",
-            truncate(&row.name, name_w),
+            truncate(&row.name, REF_NAME_WIDTH),
             row.oid7,
-            truncate(&row.age, age_w),
-            truncate(&row.author, author_w),
+            truncate(&row.age, REF_AGE_WIDTH),
+            truncate(&row.author, REF_AUTHOR_WIDTH),
             truncate(&row.summary, summary_w),
-            name_w = name_w,
-            oid_w = oid_w,
-            age_w = age_w,
-            author_w = author_w,
+            name_w = REF_NAME_WIDTH,
+            oid_w = REF_OID_WIDTH,
+            age_w = REF_AGE_WIDTH,
+            author_w = REF_AUTHOR_WIDTH,
         );
         out.push_str(&line);
         out.push('\n');
@@ -133,8 +142,11 @@ pub(super) fn render_log(
             .next()
             .unwrap_or("<no message>")
             .to_string();
-        let available = width
-            .saturating_sub(graph_prefix.len() + 1 + oid7.len() + 1 + deco_str.len() + 1);
+        let available = {
+            let base = width
+                .saturating_sub(graph_prefix.len() + 1 + oid7.len() + 1 + deco_str.len() + 1);
+            std::cmp::max(base, 1)
+        };
         summary = truncate(&summary, available);
 
         let line = if deco_str.is_empty() {
@@ -147,9 +159,15 @@ pub(super) fn render_log(
         lines.push(line);
 
         // Update lanes: replace current lane with parents (first parent stays in place).
-        lanes.remove(lane_idx);
-        for parent in parents.iter().rev() {
-            lanes.insert(lane_idx, *parent);
+        if !parents.is_empty() {
+            // Normal case: current commit is followed by one or more parent commits.
+            lanes.remove(lane_idx);
+            for parent in parents.iter().rev() {
+                lanes.insert(lane_idx, *parent);
+            }
+        } else {
+            // Zero-parent commit (root or orphan): explicitly terminate this lane.
+            lanes.remove(lane_idx);
         }
         // Deduplicate lanes keeping order.
         let mut seen = HashSet::new();
@@ -186,21 +204,19 @@ fn collect_tags(repo: &Repository, out: &mut Vec<RefRow>) -> PyResult<()> {
     let names = repo
         .tag_names(None)
         .map_err(|err| py_git_err("tag names", err))?;
-    for i in 0..names.len() {
-        if let Some(name) = names.get(i) {
-            let full = format!("refs/tags/{}", name);
-            let obj = match repo.revparse_single(&full) {
-                Ok(o) => o,
-                Err(_) => continue,
-            };
-            let commit = match obj.peel_to_commit() {
-                Ok(c) => c,
-                Err(_) => continue,
-            };
-            let row = make_row(repo, &format!("tag:{}", name), commit.id())?;
-            if let Some(row) = row {
-                out.push(row);
-            }
+    for name in names.iter().flatten() {
+        let full = format!("refs/tags/{}", name);
+        let obj = match repo.revparse_single(&full) {
+            Ok(o) => o,
+            Err(_) => continue,
+        };
+        let commit = match obj.peel_to_commit() {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let row = make_row(repo, &format!("tag:{}", name), commit.id())?;
+        if let Some(row) = row {
+            out.push(row);
         }
     }
     Ok(())
@@ -258,15 +274,13 @@ fn collect_decorations(repo: &Repository) -> PyResult<HashMap<Oid, Vec<String>>>
     let names = repo
         .tag_names(None)
         .map_err(|err| py_git_err("tag names", err))?;
-    for i in 0..names.len() {
-        if let Some(name) = names.get(i) {
-            let full = format!("refs/tags/{}", name);
-            if let Ok(obj) = repo.revparse_single(&full) {
-                if let Ok(commit) = obj.peel_to_commit() {
-                    map.entry(commit.id())
-                        .or_default()
-                        .push(format!("tag:{}", name));
-                }
+    for name in names.iter().flatten() {
+        let full = format!("refs/tags/{}", name);
+        if let Ok(obj) = repo.revparse_single(&full) {
+            if let Ok(commit) = obj.peel_to_commit() {
+                map.entry(commit.id())
+                    .or_default()
+                    .push(format!("tag:{}", name));
             }
         }
     }
@@ -299,21 +313,43 @@ fn truncate(s: &str, width: usize) -> String {
     if width == 0 {
         return String::new();
     }
-    let mut chars: Vec<char> = s.chars().collect();
-    if chars.len() <= width {
+    
+    // Use display width instead of character count
+    let display_width = s.width();
+    if display_width <= width {
         return s.to_string();
     }
+    
     if width <= 1 {
         return "…".to_string();
     }
-    chars.truncate(width - 1);
-    chars.push('…');
-    chars.into_iter().collect()
+    
+    // Build string up to the target width, accounting for display width
+    let mut result = String::new();
+    let mut current_width = 0;
+    let ellipsis_width = "…".width();
+    let target_width = width - ellipsis_width;
+    
+    for ch in s.chars() {
+        let ch_width = ch.to_string().width();
+        if current_width + ch_width > target_width {
+            break;
+        }
+        result.push(ch);
+        current_width += ch_width;
+    }
+    
+    result.push('…');
+    result
 }
 
 fn format_age(commit_secs: i64) -> String {
     let now = Utc::now().timestamp();
     let diff = now.saturating_sub(commit_secs);
+    // Handle negative age (future timestamps) by showing "0s" or "now"
+    if diff <= 0 {
+        return "0s".to_string();
+    }
     if diff < 60 {
         format!("{}s", diff)
     } else if diff < 3600 {
