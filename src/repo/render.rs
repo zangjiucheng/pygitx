@@ -13,6 +13,9 @@ const REF_AUTHOR_WIDTH: usize = 16;
 // Number of single-space separators between the 5 columns (name, oid, age, author, summary)
 const REF_SEPARATORS: usize = 4;
 
+// Character used for truncation indicator
+const ELLIPSIS: char = '…';
+
 struct RefRow {
     name: String,
     oid7: String,
@@ -320,7 +323,6 @@ fn truncate(s: &str, width: usize) -> String {
         return s.to_string();
     }
     
-    const ELLIPSIS: char = '…';
     let ellipsis_width = ELLIPSIS.width().unwrap_or(1);
     
     if width <= ellipsis_width {
