@@ -66,6 +66,19 @@ Classes
 
       Non-fatal warnings emitted during the rewrite.
 
+.. py:class:: pygitx.DiffStat
+
+   Summary of changes between two revisions.
+
+   .. py:attribute:: files_changed
+      :type: int
+   .. py:attribute:: insertions
+      :type: int
+   .. py:attribute:: deletions
+      :type: int
+   .. py:attribute:: paths
+      :type: list[str]
+
 .. py:class:: pygitx.RepoSummary
 
    Lightweight summary of a repository.
@@ -107,6 +120,10 @@ Classes
 
       Return a structured summary (also used by ``__str__``/``__repr__``).
 
+   .. py:method:: diff_stat(a_spec: str, b_spec: str, paths: list[str] | None = None) -> DiffStat
+
+      Compute diff statistics between two revisions (optionally limited to ``paths``).
+
    .. py:method:: rev_parse(spec: str) -> str
 
       Resolve a revision string (e.g., ``HEAD``, ``HEAD~1``, branch/tag, or full/short oid) to a hex object id.
@@ -129,7 +146,7 @@ Classes
 
    .. py:method:: list_tags() -> list[str]
 
-   List tag names (lightweight/annotated).
+      List tag names (lightweight/annotated).
 
    .. py:method:: current_branch() -> str | None
 
@@ -185,6 +202,10 @@ Functions
 .. py:function:: pygitx.rev_parse(repo: Repo | str, spec: str) -> str
 
    Resolve a revision spec to a hex object id. Accepts typical git rev syntax (``HEAD``, ``HEAD~N``, branches, tags, short/full oids).
+
+.. py:function:: pygitx.diff_stat(repo: Repo | str, a_spec: str, b_spec: str, paths: list[str] | None = None) -> DiffStat
+
+   Compute diff stats between two revisions (optionally limited to the given paths).
 
 .. py:function:: pygitx.list_branches(repo: Repo | str, local: bool = True, remote: bool = False) -> list[str]
 

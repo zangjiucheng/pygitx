@@ -72,3 +72,14 @@ Return True if ``a_spec`` is an ancestor of ``b_spec``.
 ``Repo.ahead_behind(a_spec: str, b_spec: str) -> tuple[int, int]``
 
 Return (ahead, behind) counts comparing ``a_spec`` to ``b_spec``.
+
+diff_stat
+---------
+``Repo.diff_stat(a_spec: str, b_spec: str, paths: list[str] | None = None) -> DiffStat``
+
+Return diff statistics between two revisions. ``paths`` can limit the diff to specific files. ``DiffStat`` prints nicely with ``str()``/``repr()`` to show counts and touched paths.
+
+.. code-block:: python
+
+   stats = repo.diff_stat("HEAD~1", "HEAD")
+   print(stats.files_changed, stats.insertions, stats.deletions)

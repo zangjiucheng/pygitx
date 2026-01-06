@@ -1,5 +1,5 @@
 use crate::repo::{PyRepo, open_repo};
-use git2::{BranchType, Commit, Oid, Repository, Signature, ObjectType, build::CheckoutBuilder};
+use git2::{BranchType, Commit, ObjectType, Oid, Repository, Signature, build::CheckoutBuilder};
 use pyo3::Python;
 use pyo3::exceptions::PyValueError;
 use pyo3::types::PyAnyMethods;
@@ -147,10 +147,7 @@ fn change_commit_message_updates_head_commit() {
         .get(&original_oid)
         .expect("mapping for amended commit");
     assert_ne!(amended_oid, original_oid);
-    assert_eq!(
-        result.updated_refs.get("HEAD"),
-        Some(&amended_oid)
-    );
+    assert_eq!(result.updated_refs.get("HEAD"), Some(&amended_oid));
     let backup_root = result.backup_root.clone().expect("backup_root");
     let backup_ref = py_repo
         .repo
@@ -161,14 +158,8 @@ fn change_commit_message_updates_head_commit() {
     let head_after = py_repo.head().unwrap().unwrap();
     assert_eq!(head_after.id, amended_oid.to_string());
 
-    let original_commit = py_repo
-        .repo
-        .find_commit(original_oid)
-        .unwrap();
-    let amended_commit = py_repo
-        .repo
-        .find_commit(amended_oid)
-        .unwrap();
+    let original_commit = py_repo.repo.find_commit(original_oid).unwrap();
+    let amended_commit = py_repo.repo.find_commit(amended_oid).unwrap();
     assert_eq!(original_commit.tree_id(), amended_commit.tree_id());
     assert_eq!(
         original_commit.parent_count(),
@@ -296,10 +287,7 @@ fn rebase_branch_replays_commits() {
     let feature_head = feature_branch.into_reference().target().unwrap();
     assert_eq!(feature_head, new_oid);
     assert_eq!(
-        mappings
-            .updated_refs
-            .get("refs/heads/feature")
-            .copied(),
+        mappings.updated_refs.get("refs/heads/feature").copied(),
         Some(new_oid)
     );
 }
@@ -319,16 +307,10 @@ fn squash_last_combines_commits() {
     let head = py_repo.head().unwrap().unwrap();
     let new_oid = Oid::from_str(&head.id).unwrap();
     let original_head_oid = Oid::from_str(&head_before.id).unwrap();
-    assert_eq!(
-        squashed.old_to_new.get(&original_head_oid),
-        Some(&new_oid)
-    );
+    assert_eq!(squashed.old_to_new.get(&original_head_oid), Some(&new_oid));
     assert_eq!(py_repo.list_commits(Some(10)).unwrap().len(), 1);
 
-    let commit = py_repo
-        .repo
-        .find_commit(new_oid)
-        .unwrap();
+    let commit = py_repo.repo.find_commit(new_oid).unwrap();
     let message = commit.message().unwrap_or_default();
     assert!(message.contains("first"));
     assert!(message.contains("second"));
@@ -349,10 +331,7 @@ fn squash_last_fixup_uses_oldest_message() {
     let squashed = py_repo.squash_last(2, Some("fixup"), None).unwrap();
     let head = py_repo.head().unwrap().unwrap();
     let new_oid = Oid::from_str(&head.id).unwrap();
-    let commit = py_repo
-        .repo
-        .find_commit(new_oid)
-        .unwrap();
+    let commit = py_repo.repo.find_commit(new_oid).unwrap();
     assert_eq!(commit.summary(), Some("base"));
     assert_eq!(commit.parent_count(), 0);
     assert_eq!(
@@ -475,7 +454,9 @@ fn reword_updates_arbitrary_commit() {
     let tip = create_commit_on_ref(&repo, "HEAD", &[middle], "tip", "tip");
     let mut py_repo = PyRepo { repo };
 
-    let result = py_repo.reword(&middle.to_string(), "rewritten middle").unwrap();
+    let result = py_repo
+        .reword(&middle.to_string(), "rewritten middle")
+        .unwrap();
     assert!(result.old_to_new.get(&middle).is_some());
     let head = py_repo.head().unwrap().unwrap();
     assert_ne!(head.id, tip.to_string());
@@ -498,7 +479,10 @@ fn keep_path_rewrites_history() {
     assert!(!result.old_to_new.is_empty());
 
     let head = py_repo.head().unwrap().unwrap();
-    let commit = py_repo.repo.find_commit(Oid::from_str(&head.id).unwrap()).unwrap();
+    let commit = py_repo
+        .repo
+        .find_commit(Oid::from_str(&head.id).unwrap())
+        .unwrap();
     let tree = commit.tree().unwrap();
     assert!(tree.get_name("a.txt").is_some());
     assert!(tree.get_name("b.txt").is_none());
@@ -524,9 +508,7 @@ fn list_branches_tags_and_current_branch() {
 
     // Tag the base.
     {
-        let obj = repo
-            .find_object(base, Some(ObjectType::Commit))
-            .unwrap();
+        let obj = repo.find_object(base, Some(ObjectType::Commit)).unwrap();
         repo.tag_lightweight("v1.0", &obj, false).unwrap();
     }
 
@@ -555,8 +537,12 @@ fn repo_summary_reports_info() {
     let repo = Repository::init(dir.path()).unwrap();
     let base = create_commit_on_ref_with_path(&repo, "HEAD", &[], "a.txt", "base", "a1");
     let tip = create_commit_on_ref_with_path(&repo, "HEAD", &[base], "b.txt", "tip", "b1");
-    repo.tag_lightweight("v1.0", &repo.find_object(base, Some(ObjectType::Commit)).unwrap(), false)
-        .unwrap();
+    repo.tag_lightweight(
+        "v1.0",
+        &repo.find_object(base, Some(ObjectType::Commit)).unwrap(),
+        false,
+    )
+    .unwrap();
     let py_repo = PyRepo { repo };
 
     let summary = py_repo.repo_summary().unwrap();
@@ -614,16 +600,68 @@ fn graph_helpers_work() {
 
     let py_repo = PyRepo { repo };
 
-    let mb = py_repo.merge_base(&base.to_string(), &feature_tip.to_string()).unwrap();
+    let mb = py_repo
+        .merge_base(&base.to_string(), &feature_tip.to_string())
+        .unwrap();
     assert_eq!(mb, Some(base.to_string()));
-    assert!(py_repo
-        .is_ancestor(&base.to_string(), &feature_tip.to_string())
-        .unwrap());
+    assert!(
+        py_repo
+            .is_ancestor(&base.to_string(), &feature_tip.to_string())
+            .unwrap()
+    );
 
     let (ahead, behind) = py_repo
         .ahead_behind(&feature_tip.to_string(), &main_tip.to_string())
         .unwrap();
     assert!(ahead > 0 || behind > 0);
+}
+
+#[test]
+fn diff_stat_reports_changes_and_filters_paths() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    let base = create_commit_on_ref_with_path(&repo, "HEAD", &[], "a.txt", "base", "one");
+    // Modify a.txt and add b.txt.
+    let workdir = repo.workdir().unwrap();
+    std::fs::write(workdir.join("a.txt"), "two").unwrap();
+    std::fs::write(workdir.join("b.txt"), "new").unwrap();
+    let mut index = repo.index().unwrap();
+    index.add_path(Path::new("a.txt")).unwrap();
+    index.add_path(Path::new("b.txt")).unwrap();
+    index.write().unwrap();
+    let tree_id = index.write_tree().unwrap();
+    let tree = repo.find_tree(tree_id).unwrap();
+    let sig = Signature::now("PyGitX", "pygitx@example.com").unwrap();
+    let base_commit = repo.find_commit(base).unwrap();
+    let tip = repo
+        .commit(
+            Some("HEAD"),
+            &sig,
+            &sig,
+            "update and add",
+            &tree,
+            &[&base_commit],
+        )
+        .unwrap();
+
+    drop(tree);
+    drop(index);
+    drop(base_commit);
+    let py_repo = PyRepo { repo };
+    let stats = py_repo
+        .diff_stat(&base.to_string(), &tip.to_string(), None)
+        .unwrap();
+    assert_eq!(stats.files_changed, 2);
+    assert!(stats.insertions >= 2);
+    assert_eq!(stats.deletions, 1);
+    assert!(stats.paths.contains(&"a.txt".to_string()));
+    assert!(stats.paths.contains(&"b.txt".to_string()));
+    let filtered = py_repo
+        .diff_stat(&base.to_string(), &tip.to_string(), Some(vec!["a.txt".into()]))
+        .unwrap();
+    assert_eq!(filtered.files_changed, 1);
+    assert!(filtered.paths.iter().all(|p| p == "a.txt"));
 }
 
 #[test]
