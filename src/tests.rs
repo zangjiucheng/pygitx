@@ -696,7 +696,7 @@ fn render_refs_and_log_tui() {
     let refs = py_repo.render_refs(true, false, true, Some(120)).unwrap();
     assert!(refs.contains("main"));
     assert!(refs.contains("feature"));
-    assert!(refs.contains("v1.0"));
+    assert!(refs.contains("tag:v1.0"));
 
     let log = py_repo
         .render_log("HEAD", 20, true, true, Some(120))
