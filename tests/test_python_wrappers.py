@@ -169,6 +169,32 @@ def test_diff_stat_wrapper(tmp_path: Path) -> None:
         pygitx.diff_stat(repo_path, base, "   ")
 
 
+def test_refs_and_log_tui(tmp_path: Path) -> None:
+    repo_path = init_repo(tmp_path)
+    base = commit_file(repo_path, "base", "a.txt", "a1")
+    main_tip = commit_file(repo_path, "main tip", "a.txt", "a2")
+    run_git(repo_path, "branch", "feature", base)
+    run_git(repo_path, "checkout", "feature")
+    feature_tip = commit_file(repo_path, "feature tip", "b.txt", "b1")
+    # Merge feature into main
+    run_git(repo_path, "checkout", "main")
+    run_git(repo_path, "merge", "--no-ff", "feature", "-m", "merge feature")
+    run_git(repo_path, "tag", "-a", "v1.0", "-m", "v1.0", main_tip)
+
+    refs = pygitx.refs_tui(repo_path)
+    assert "main" in refs and "feature" in refs and "v1.0" in refs
+    log = pygitx.log_tui(repo_path, max_commits=10)
+    assert "*" in log
+    assert "main" in log or "feature" in log
+    assert main_tip[:7] in log or feature_tip[:7] in log
+    with pytest.raises(ValueError):
+        pygitx.refs_tui(repo_path, local=False, remote=False, tags=False)
+    with pytest.raises(ValueError):
+        pygitx.log_tui(repo_path, rev="   ")
+    with pytest.raises(ValueError):
+        pygitx.log_tui(repo_path, max_commits=0)
+
+
 def test_rewrite_author_wrapper_validates_and_updates(tmp_path: Path) -> None:
     repo_path = init_repo(tmp_path)
     commit_id = commit_file(repo_path, "initial")

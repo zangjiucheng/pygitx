@@ -120,6 +120,14 @@ Classes
 
       Return a structured summary (also used by ``__str__``/``__repr__``).
 
+   .. py:method:: render_refs(local: bool = True, remote: bool = False, tags: bool = True, max_width: int | None = None) -> str
+
+      Render branches/tags in a jj-style table (NAME, OID7, AGE, AUTHOR, SUMMARY), width-aware.
+
+   .. py:method:: render_log(rev: str, max_commits: int = 200, decorate: bool = True, graph: bool = True, max_width: int | None = None) -> str
+
+      Render a compact log like ``git log --graph --oneline`` with optional decorations and ASCII graph.
+
    .. py:method:: diff_stat(a_spec: str, b_spec: str, paths: list[str] | None = None) -> DiffStat
 
       Compute diff statistics between two revisions (optionally limited to ``paths``).
@@ -198,6 +206,14 @@ Functions
 .. py:function:: pygitx.summary(repo: Repo | str) -> RepoSummary
 
    Return a structured repository summary.
+
+.. py:function:: pygitx.refs_tui(repo: Repo | str, local: bool = True, remote: bool = False, tags: bool = True, max_width: int | None = None) -> str
+
+   Render branches/tags in a jj-style table (NAME/OID7/AGE/AUTHOR/SUMMARY).
+
+.. py:function:: pygitx.log_tui(repo: Repo | str, rev: str = "HEAD", max_commits: int = 200, decorate: bool = True, graph: bool = True, max_width: int | None = None) -> str
+
+   Render a compact decorated log with optional ASCII graph.
 
 .. py:function:: pygitx.rev_parse(repo: Repo | str, spec: str) -> str
 

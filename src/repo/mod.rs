@@ -14,6 +14,7 @@ mod summary;
 mod tree_ops;
 mod util;
 mod diff;
+mod render;
 
 use backup::{collect_head_refs, create_backup_refs};
 use diff::diff_stat;
@@ -22,6 +23,7 @@ use rewrite::{
     rewrite_author, squash_last_commits,
 };
 use summary::summarize_repo;
+use render::{render_log, render_refs};
 use util::resolve_repo_path;
 
 /// Thin wrapper around git2::Repository exposed to Python.
@@ -265,6 +267,38 @@ impl PyRepo {
         let a = self.resolve_spec_oid(a_spec)?;
         let b = self.resolve_spec_oid(b_spec)?;
         diff_stat(&self.repo, a, b, paths)
+    }
+
+    /// Render a TUI-style ref list (branches/tags) similar to jj bookmark list.
+    #[pyo3(
+        text_signature = "($self, local=True, remote=False, tags=True, max_width=None)",
+        signature = (local = true, remote = false, tags = true, max_width = None)
+    )]
+    pub fn render_refs(
+        &self,
+        local: bool,
+        remote: bool,
+        tags: bool,
+        max_width: Option<usize>,
+    ) -> PyResult<String> {
+        render_refs(&self.repo, local, remote, tags, max_width)
+    }
+
+    /// Render a TUI-style commit log (graph/decorate) similar to jj log / git log --graph.
+    #[pyo3(
+        text_signature = "($self, rev, max_commits=200, decorate=True, graph=True, max_width=None)",
+        signature = (rev, max_commits = 200, decorate = true, graph = true, max_width = None)
+    )]
+    pub fn render_log(
+        &self,
+        rev: &str,
+        max_commits: usize,
+        decorate: bool,
+        graph: bool,
+        max_width: Option<usize>,
+    ) -> PyResult<String> {
+        let start = self.resolve_spec_oid(rev)?;
+        render_log(&self.repo, start, max_commits, decorate, graph, max_width)
     }
 
     /// Resolve a revision spec to an object id (hex).

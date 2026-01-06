@@ -83,3 +83,15 @@ Return diff statistics between two revisions. ``paths`` can limit the diff to sp
 
    stats = repo.diff_stat("HEAD~1", "HEAD")
    print(stats.files_changed, stats.insertions, stats.deletions)
+
+refs_tui
+--------
+``pygitx.refs_tui(repo, local=True, remote=False, tags=True, max_width=None) -> str``
+
+Render branches/tags in a jj-style table with columns for name, short oid, age, author, and summary. Width is inferred from ``$COLUMNS`` unless ``max_width`` is provided.
+
+log_tui
+-------
+``pygitx.log_tui(repo, rev="HEAD", max_commits=200, decorate=True, graph=True, max_width=None) -> str``
+
+Render a compact oneline log similar to ``git log --graph --oneline`` with optional ASCII graph and decorations for HEAD/branches/tags. Limits to ``max_commits`` entries and truncates to fit ``max_width`` (or ``$COLUMNS``).

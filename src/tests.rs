@@ -665,6 +665,48 @@ fn diff_stat_reports_changes_and_filters_paths() {
 }
 
 #[test]
+fn render_refs_and_log_tui() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    // main branch commits
+    let base = create_commit_on_ref_with_path(&repo, "HEAD", &[], "a.txt", "base", "a1");
+    let main_tip = create_commit_on_ref_with_path(&repo, "HEAD", &[base], "a.txt", "main tip", "a2");
+    // feature branch from base
+    let feature_tip = {
+        let base_commit = repo.find_commit(base).unwrap();
+        repo.branch("feature", &base_commit, false).unwrap();
+        create_commit_on_ref_with_path(&repo, "refs/heads/feature", &[base], "b.txt", "feature tip", "b1")
+    };
+    // Merge feature into main
+    let merge_tip = create_commit_on_ref_with_path(
+        &repo,
+        "HEAD",
+        &[main_tip, feature_tip],
+        "c.txt",
+        "merge feature",
+        "c1",
+    );
+    // Tag main tip
+    let obj = repo.find_object(main_tip, None).unwrap();
+    repo.tag_lightweight("v1.0", &obj, false).unwrap();
+    drop(obj);
+
+    let py_repo = PyRepo { repo };
+    let refs = py_repo.render_refs(true, false, true, Some(120)).unwrap();
+    assert!(refs.contains("main"));
+    assert!(refs.contains("feature"));
+    assert!(refs.contains("v1.0"));
+
+    let log = py_repo
+        .render_log("HEAD", 20, true, true, Some(120))
+        .unwrap();
+    assert!(log.contains('*'));
+    assert!(log.contains("|") || log.contains("\\") || log.contains("/"));
+    assert!(log.contains(&merge_tip.to_string()[0..7]));
+}
+
+#[test]
 fn create_backup_ref_creates_backup_refs() {
     init_python();
     let dir = tempdir().unwrap();
