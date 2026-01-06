@@ -115,11 +115,10 @@ def test_repo_summary_and_str(tmp_path: Path) -> None:
     assert summary3.branch == summary.branch
 
 
-def test_graph_helpers(tmp_path: Path) -> None:
+def test_graph_helpers_basic(tmp_path: Path) -> None:
     repo_path = init_repo(tmp_path)
     base = commit_file(repo_path, "base")
     tip = commit_file(repo_path, "tip")
-    commit_file(repo_path, "feature commit")
     run_git(repo_path, "branch", "feature", base)
     run_git(repo_path, "checkout", "feature")
     feat_tip = commit_file(repo_path, "feature tip")
@@ -128,7 +127,21 @@ def test_graph_helpers(tmp_path: Path) -> None:
     assert pygitx.merge_base(py_repo, base, feat_tip) == base
     assert pygitx.is_ancestor(py_repo, base, feat_tip) is True
     ahead, behind = pygitx.ahead_behind(py_repo, feat_tip, tip)
+    ahead2, behind2 = pygitx.ahead_behind(str(repo_path), feat_tip, tip)
     assert ahead >= 0 and behind >= 0
+    assert (ahead, behind) == (ahead2, behind2)
+    with pytest.raises(ValueError):
+        pygitx.merge_base(repo_path, "   ", tip)
+    with pytest.raises(ValueError):
+        pygitx.is_ancestor(repo_path, "", tip)
+    with pytest.raises(ValueError):
+        pygitx.ahead_behind(repo_path, "   ", tip)
+    with pytest.raises(ValueError):
+        pygitx.merge_base(repo_path, base, "   ")
+    with pytest.raises(ValueError):
+        pygitx.is_ancestor(repo_path, base, "   ")
+    with pytest.raises(ValueError):
+        pygitx.ahead_behind(repo_path, base, "   ")
 
 
 def test_rewrite_author_wrapper_validates_and_updates(tmp_path: Path) -> None:

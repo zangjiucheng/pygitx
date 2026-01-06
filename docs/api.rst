@@ -127,7 +127,7 @@ Classes
 
       List branch names. Control inclusion with ``local``/``remote`` flags.
 
-.. py:method:: list_tags() -> list[str]
+   .. py:method:: list_tags() -> list[str]
 
    List tag names (lightweight/annotated).
 
