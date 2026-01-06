@@ -3,7 +3,7 @@ use chrono::Utc;
 use git2::{BranchType, ErrorCode, Oid, Repository};
 use pyo3::prelude::*;
 use std::collections::{HashMap, HashSet};
-use unicode_width::UnicodeWidthStr;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 // Column widths for refs table output
 const REF_NAME_WIDTH: usize = 22;
@@ -325,13 +325,13 @@ fn truncate(s: &str, width: usize) -> String {
     }
     
     // Build string up to the target width, accounting for display width
+    const ELLIPSIS_WIDTH: usize = 1; // "…" has width 1
     let mut result = String::new();
     let mut current_width = 0;
-    let ellipsis_width = "…".width();
-    let target_width = width - ellipsis_width;
+    let target_width = width - ELLIPSIS_WIDTH;
     
     for ch in s.chars() {
-        let ch_width = ch.to_string().width();
+        let ch_width = ch.width().unwrap_or(0);
         if current_width + ch_width > target_width {
             break;
         }
