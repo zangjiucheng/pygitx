@@ -46,6 +46,8 @@ __all__ = [
     "is_ancestor",
     "ahead_behind",
     "diff_stat",
+    "refs_tui",
+    "log_tui",
 ]
 
 
@@ -161,6 +163,35 @@ def diff_stat(
     if not b_spec.strip():
         raise ValueError("b_spec cannot be empty")
     return _ensure_repo(repo).diff_stat(a_spec, b_spec, paths)
+
+
+def refs_tui(
+    repo: Repo | str,
+    local: bool = True,
+    remote: bool = False,
+    tags: bool = True,
+    max_width: int | None = None,
+) -> str:
+    """Render branches/tags in a jj-style table."""
+    if not (local or remote or tags):
+        raise ValueError("at least one of local, remote, or tags must be True")
+    return _ensure_repo(repo).render_refs(local, remote, tags, max_width)
+
+
+def log_tui(
+    repo: Repo | str,
+    rev: str = "HEAD",
+    max_commits: int = 200,
+    decorate: bool = True,
+    graph: bool = True,
+    max_width: int | None = None,
+) -> str:
+    """Render a jj/git-style oneline log with optional graph/decorations."""
+    if not rev.strip():
+        raise ValueError("rev cannot be empty")
+    if max_commits <= 0:
+        raise ValueError("max_commits must be positive")
+    return _ensure_repo(repo).render_log(rev, max_commits, decorate, graph, max_width)
 
 
 def filter_commits(
