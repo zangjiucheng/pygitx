@@ -2,6 +2,66 @@ use git2::{Commit, Oid};
 use pyo3::prelude::*;
 use std::collections::HashMap;
 
+/// Diff statistics between two revisions.
+#[pyclass(name = "DiffStat")]
+pub struct PyDiffStat {
+    #[pyo3(get)]
+    pub files_changed: usize,
+    #[pyo3(get)]
+    pub insertions: usize,
+    #[pyo3(get)]
+    pub deletions: usize,
+    #[pyo3(get)]
+    pub paths: Vec<String>,
+}
+
+impl PyDiffStat {
+    pub fn new(
+        files_changed: usize,
+        insertions: usize,
+        deletions: usize,
+        paths: Vec<String>,
+    ) -> Self {
+        Self {
+            files_changed,
+            insertions,
+            deletions,
+            paths,
+        }
+    }
+}
+
+#[pymethods]
+impl PyDiffStat {
+    fn __repr__(&self) -> PyResult<String> {
+        Ok(format!(
+            "DiffStat(files_changed={}, insertions={}, deletions={}, paths={})",
+            self.files_changed,
+            self.insertions,
+            self.deletions,
+            format_path_list(&self.paths),
+        ))
+    }
+
+    fn __str__(&self) -> PyResult<String> {
+        Ok(format!(
+            "DiffStat(\n  files_changed: {}\n  insertions: {}\n  deletions: {}\n  paths: {}\n)",
+            self.files_changed,
+            self.insertions,
+            self.deletions,
+            format_path_list(&self.paths),
+        ))
+    }
+}
+
+fn format_path_list(paths: &[String]) -> String {
+    if paths.is_empty() {
+        "[]".to_string()
+    } else {
+        format!("[{}]", paths.join(", "))
+    }
+}
+
 /// Summary of repository information for display.
 #[pyclass(name = "RepoSummary")]
 pub struct PyRepoSummary {

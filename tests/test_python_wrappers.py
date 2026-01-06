@@ -119,7 +119,7 @@ def test_graph_helpers_basic(tmp_path: Path) -> None:
     repo_path = init_repo(tmp_path)
     base = commit_file(repo_path, "base")
     tip = commit_file(repo_path, "tip")
-    run_git(repo_path, "branch", "feature", base)
+    run_git(repo_path, "branch", "feature", base)  # branch from base; main continues at tip
     run_git(repo_path, "checkout", "feature")
     feat_tip = commit_file(repo_path, "feature tip")
 
@@ -142,6 +142,31 @@ def test_graph_helpers_basic(tmp_path: Path) -> None:
         pygitx.is_ancestor(repo_path, base, "   ")
     with pytest.raises(ValueError):
         pygitx.ahead_behind(repo_path, base, "   ")
+
+
+def test_diff_stat_wrapper(tmp_path: Path) -> None:
+    repo_path = init_repo(tmp_path)
+    base = commit_file(repo_path, "base", "a.txt", "one")
+    # Modify a.txt and add b.txt
+    Path(repo_path / "a.txt").write_text("two")
+    Path(repo_path / "b.txt").write_text("new")
+    run_git(repo_path, "add", ".")
+    run_git(repo_path, "commit", "-m", "update and add")
+    tip = run_git(repo_path, "rev-parse", "HEAD")
+
+    py_repo = pygitx.open_repo(str(repo_path))
+    stats = pygitx.diff_stat(py_repo, base, tip)
+    assert stats.files_changed == 2
+    assert "a.txt" in stats.paths and "b.txt" in stats.paths
+    assert "DiffStat(" in repr(stats)
+    assert "files_changed: 2" in str(stats)
+    filtered = pygitx.diff_stat(repo_path, base, tip, paths=["a.txt"])
+    assert filtered.files_changed == 1
+    assert filtered.paths == ["a.txt"]
+    with pytest.raises(ValueError):
+        pygitx.diff_stat(repo_path, "   ", tip)
+    with pytest.raises(ValueError):
+        pygitx.diff_stat(repo_path, base, "   ")
 
 
 def test_rewrite_author_wrapper_validates_and_updates(tmp_path: Path) -> None:

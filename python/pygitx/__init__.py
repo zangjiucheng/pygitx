@@ -17,6 +17,7 @@ RewriteResult = _native.RewriteResult
 Repo = _native.Repo
 open_repo = _native.open_repo
 RepoSummary = _native.RepoSummary
+DiffStat = _native.DiffStat
 
 __all__ = [
     "CommitInfo",
@@ -24,6 +25,7 @@ __all__ = [
     "Repo",
     "open_repo",
     "RepoSummary",
+    "DiffStat",
     "create_backup_ref",
     "summary",
     "head",
@@ -43,6 +45,7 @@ __all__ = [
     "merge_base",
     "is_ancestor",
     "ahead_behind",
+    "diff_stat",
 ]
 
 
@@ -147,6 +150,17 @@ def ahead_behind(repo: Repo | str, a_spec: str, b_spec: str) -> tuple[int, int]:
     if not b_spec.strip():
         raise ValueError("b_spec cannot be empty")
     return _ensure_repo(repo).ahead_behind(a_spec, b_spec)
+
+
+def diff_stat(
+    repo: Repo | str, a_spec: str, b_spec: str, paths: list[str] | None = None
+) -> DiffStat:
+    """Return diff stats (files/insertions/deletions/paths) between two revisions."""
+    if not a_spec.strip():
+        raise ValueError("a_spec cannot be empty")
+    if not b_spec.strip():
+        raise ValueError("b_spec cannot be empty")
+    return _ensure_repo(repo).diff_stat(a_spec, b_spec, paths)
 
 
 def filter_commits(

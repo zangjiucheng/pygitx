@@ -617,6 +617,54 @@ fn graph_helpers_work() {
 }
 
 #[test]
+fn diff_stat_reports_changes_and_filters_paths() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    let base = create_commit_on_ref_with_path(&repo, "HEAD", &[], "a.txt", "base", "one");
+    // Modify a.txt and add b.txt.
+    let workdir = repo.workdir().unwrap();
+    std::fs::write(workdir.join("a.txt"), "two").unwrap();
+    std::fs::write(workdir.join("b.txt"), "new").unwrap();
+    let mut index = repo.index().unwrap();
+    index.add_path(Path::new("a.txt")).unwrap();
+    index.add_path(Path::new("b.txt")).unwrap();
+    index.write().unwrap();
+    let tree_id = index.write_tree().unwrap();
+    let tree = repo.find_tree(tree_id).unwrap();
+    let sig = Signature::now("PyGitX", "pygitx@example.com").unwrap();
+    let base_commit = repo.find_commit(base).unwrap();
+    let tip = repo
+        .commit(
+            Some("HEAD"),
+            &sig,
+            &sig,
+            "update and add",
+            &tree,
+            &[&base_commit],
+        )
+        .unwrap();
+
+    drop(tree);
+    drop(index);
+    drop(base_commit);
+    let py_repo = PyRepo { repo };
+    let stats = py_repo
+        .diff_stat(&base.to_string(), &tip.to_string(), None)
+        .unwrap();
+    assert_eq!(stats.files_changed, 2);
+    assert!(stats.insertions >= 2);
+    assert_eq!(stats.deletions, 1);
+    assert!(stats.paths.contains(&"a.txt".to_string()));
+    assert!(stats.paths.contains(&"b.txt".to_string()));
+    let filtered = py_repo
+        .diff_stat(&base.to_string(), &tip.to_string(), Some(vec!["a.txt".into()]))
+        .unwrap();
+    assert_eq!(filtered.files_changed, 1);
+    assert!(filtered.paths.iter().all(|p| p == "a.txt"));
+}
+
+#[test]
 fn create_backup_ref_creates_backup_refs() {
     init_python();
     let dir = tempdir().unwrap();

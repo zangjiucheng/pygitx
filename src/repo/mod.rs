@@ -1,5 +1,5 @@
 use crate::errors::py_git_err;
-use crate::types::{PyCommitInfo, PyRepoSummary, RewriteResult};
+use crate::types::{PyCommitInfo, PyDiffStat, PyRepoSummary, RewriteResult};
 use chrono::{DateTime, Utc};
 use git2::{BranchType, Commit, ErrorClass, ErrorCode, Oid, Repository};
 use pyo3::exceptions::PyValueError;
@@ -13,8 +13,10 @@ mod rewrite;
 mod summary;
 mod tree_ops;
 mod util;
+mod diff;
 
 use backup::{collect_head_refs, create_backup_refs};
+use diff::diff_stat;
 use rewrite::{
     change_commit_message, filter_commits, keep_path, rebase_branch, remove_path, reword_commit,
     rewrite_author, squash_last_commits,
@@ -250,6 +252,19 @@ impl PyRepo {
         self.repo
             .graph_ahead_behind(a, b)
             .map_err(|err| py_git_err("failed to compute ahead/behind", err))
+    }
+
+    /// Diff stats between two commits (optionally limited to paths).
+    #[pyo3(text_signature = "($self, a_spec, b_spec, paths=None)", signature = (a_spec, b_spec, paths = None))]
+    pub fn diff_stat(
+        &self,
+        a_spec: &str,
+        b_spec: &str,
+        paths: Option<Vec<String>>,
+    ) -> PyResult<PyDiffStat> {
+        let a = self.resolve_spec_oid(a_spec)?;
+        let b = self.resolve_spec_oid(b_spec)?;
+        diff_stat(&self.repo, a, b, paths)
     }
 
     /// Resolve a revision spec to an object id (hex).

@@ -44,6 +44,7 @@ print("Tags:", repo.list_tags())
 print("Current branch:", repo.current_branch())
 print("Merge base of main and feature:", repo.merge_base("main", "feature"))
 print("Ahead/behind main vs feature:", repo.ahead_behind("main", "feature"))
+print("Diff HEAD~1..HEAD:", repo.diff_stat("HEAD~1", "HEAD").files_changed, "files")
 ```
 
 Example script: `examples/demo.py` (run with `--help` to see options).
