@@ -58,7 +58,12 @@ fn format_path_list(paths: &[String]) -> String {
     if paths.is_empty() {
         "[]".to_string()
     } else {
-        format!("[{}]", paths.join(", "))
+        let quoted_paths = paths
+            .iter()
+            .map(|p| format!("{:?}", p))
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!("[{}]", quoted_paths)
     }
 }
 
