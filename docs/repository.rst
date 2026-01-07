@@ -1,7 +1,9 @@
 Repository basics
 =================
 
-Open and inspect a repository.
+Open and inspect a repository. ``Repo`` methods are the primary API; a few
+module-level helpers (``open_repo``, ``summary``, ``refs_tui``, ``log_tui``,
+``log_graph``) are provided for convenience.
 
 open_repo
 ---------

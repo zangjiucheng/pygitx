@@ -120,9 +120,9 @@ Classes
 
       Return a structured summary (also used by ``__str__``/``__repr__``).
 
-   .. py:method:: render_refs(local: bool = True, remote: bool = False, tags: bool = True, max_width: int | None = None, color: bool = True) -> str
+.. py:method:: render_refs(local: bool = True, remote: bool = False, tags: bool = True, max_width: int | None = None, color: bool = True) -> str
 
-      Render branches/tags in a jj-style table (NAME, OID7, AGE, AUTHOR, SUMMARY), width-aware; enable ``color`` for ANSI styling.
+   Render branches/tags in a jj-style table (NAME, OID7, AGE, AUTHOR, SUMMARY), width-aware; enable ``color`` for ANSI styling.
 
    .. py:method:: render_log(rev: str, max_commits: int = 200, decorate: bool = True, graph: bool = True, max_width: int | None = None, color: bool = True) -> str
 
@@ -195,16 +195,12 @@ Classes
 
       Squash the most recent commits into one. ``mode`` may be ``"squash"`` (concatenate messages) or ``"fixup"`` (keep oldest message). Raises if history is not linear across the requested range.
 
-Functions
----------
+Functions (convenience)
+-----------------------
 
 .. py:function:: pygitx.open_repo(path: str | os.PathLike[str]) -> Repo
 
    Open a git repository at ``path``. Supports ``pathlib.Path`` and ``~`` expansion.
-
-.. py:function:: pygitx.create_backup_ref(repo: Repo | str, prefix: str | None = None) -> str
-
-   Create backup refs under ``refs/pygitx/backup/<timestamp>`` for HEAD and its branch (if attached).
 
 .. py:function:: pygitx.summary(repo: Repo | str) -> RepoSummary
 
@@ -221,6 +217,8 @@ Functions
 .. py:function:: pygitx.log_graph(repo: Repo | str, refs: list[str] | None = None, max_commits: int = 400, decorate: bool = True, max_width: int | None = None, color: bool = True) -> str
 
    Render a multi-branch decorated graph starting from refs (or all local branches). Set ``color=True`` for ANSI output.
+
+Module-level convenience helpers are limited to ``open_repo``, ``summary``, ``refs_tui``, ``log_tui``, and ``log_graph``. Prefer ``Repo`` methods for all other operations.
 .. py:function:: pygitx.rev_parse(repo: Repo | str, spec: str) -> str
 
    Resolve a revision spec to a hex object id. Accepts typical git rev syntax (``HEAD``, ``HEAD~N``, branches, tags, short/full oids).
