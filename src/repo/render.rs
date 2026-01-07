@@ -92,13 +92,19 @@ pub(super) fn render_refs(
     let colors = Colors { enabled: color };
     let mut out = String::new();
     for row in rows {
+        // Truncate first, then apply colors to avoid width calculation issues
+        let name_truncated = truncate(&row.name, REF_NAME_WIDTH);
+        let age_truncated = truncate(&row.age, REF_AGE_WIDTH);
+        let author_truncated = truncate(&row.author, REF_AUTHOR_WIDTH);
+        let summary_truncated = truncate(&row.summary, summary_w);
+        
         let line = format!(
             "{:<name_w$} {:<oid_w$} {:<age_w$} {:<author_w$} {}",
-            colors.green(&truncate(&row.name, REF_NAME_WIDTH)),
+            colors.green(&name_truncated),
             colors.cyan(&row.oid7),
-            colors.blue(&truncate(&row.age, REF_AGE_WIDTH)),
-            colors.yellow(&truncate(&row.author, REF_AUTHOR_WIDTH)),
-            truncate(&row.summary, summary_w),
+            colors.blue(&age_truncated),
+            colors.yellow(&author_truncated),
+            summary_truncated,
             name_w = REF_NAME_WIDTH,
             oid_w = REF_OID_WIDTH,
             age_w = REF_AGE_WIDTH,
@@ -172,13 +178,19 @@ pub(super) fn render_log(
             deco.push("HEAD".to_string());
         }
         deco.sort();
-        let deco_str = if decorate && !deco.is_empty() {
-            colors.magenta(&format!("[{}]", deco.join(", ")))
+        let deco_raw = if decorate && !deco.is_empty() {
+            format!("[{}]", deco.join(", "))
+        } else {
+            String::new()
+        };
+        let deco_str = if !deco_raw.is_empty() {
+            colors.magenta(&deco_raw)
         } else {
             String::new()
         };
 
-        let oid7 = colors.cyan(&oid.to_string()[0..7].to_string());
+        let oid7_raw = oid.to_string()[0..7].to_string();
+        let oid7 = colors.cyan(&oid7_raw);
         let mut summary = commit
             .summary()
             .unwrap_or("<no message>")
@@ -188,7 +200,7 @@ pub(super) fn render_log(
             .to_string();
         let available = {
             let base = width
-                .saturating_sub(raw_prefix.len() + 1 + oid7.len() + 1 + deco_str.len() + 1);
+                .saturating_sub(raw_prefix.len() + 1 + oid7_raw.len() + 1 + deco_raw.len() + 1);
             std::cmp::max(base, 1)
         };
         summary = truncate(&summary, available);
@@ -304,13 +316,19 @@ pub(super) fn render_log_graph(
             deco.push("HEAD".to_string());
         }
         deco.sort();
-        let deco_str = if decorate && !deco.is_empty() {
-            colors.magenta(&format!("[{}]", deco.join(", ")))
+        let deco_raw = if decorate && !deco.is_empty() {
+            format!("[{}]", deco.join(", "))
+        } else {
+            String::new()
+        };
+        let deco_str = if !deco_raw.is_empty() {
+            colors.magenta(&deco_raw)
         } else {
             String::new()
         };
 
-        let oid7 = colors.cyan(&oid.to_string()[0..7].to_string());
+        let oid7_raw = oid.to_string()[0..7].to_string();
+        let oid7 = colors.cyan(&oid7_raw);
         let mut summary = commit
             .summary()
             .unwrap_or("<no message>")
@@ -319,7 +337,7 @@ pub(super) fn render_log_graph(
             .unwrap_or("<no message>")
             .to_string();
         let available = width
-            .saturating_sub(raw_prefix.len() + 1 + oid7.len() + 1 + deco_str.len() + 1);
+            .saturating_sub(raw_prefix.len() + 1 + oid7_raw.len() + 1 + deco_raw.len() + 1);
         summary = truncate(&summary, available);
 
         let line = if deco_str.is_empty() {
