@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Repository basics &mdash; PyGitX 0.1.0 documentation</title>
+  <title>Repository basics &mdash; PyGitX 0.2.2 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ee7fcff9" />
@@ -14,7 +14,7 @@
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/documentation_options.js?v=000c92bf"></script>
       <script src="_static/doctools.js?v=9a2dae69"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
@@ -60,6 +60,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#diff-stat">diff_stat</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#refs-tui">refs_tui</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#log-tui">log_tui</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#log-graph">log_graph</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="revision_parsing.html">Revision parsing</a></li>
@@ -94,7 +95,9 @@
              
   <section id="repository-basics">
 <h1>Repository basics<a class="headerlink" href="#repository-basics" title="Link to this heading"></a></h1>
-<p>Open and inspect a repository.</p>
+<p>Open and inspect a repository. <code class="docutils literal notranslate"><span class="pre">Repo</span></code> methods are the primary API; a few
+module-level helpers (<code class="docutils literal notranslate"><span class="pre">open_repo</span></code>, <code class="docutils literal notranslate"><span class="pre">summary</span></code>, <code class="docutils literal notranslate"><span class="pre">refs_tui</span></code>, <code class="docutils literal notranslate"><span class="pre">log_tui</span></code>,
+<code class="docutils literal notranslate"><span class="pre">log_graph</span></code>) are provided for convenience.</p>
 <section id="open-repo">
 <h2>open_repo<a class="headerlink" href="#open-repo" title="Link to this heading"></a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">pygitx.open_repo(path:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">os.PathLike[str])</span> <span class="pre">-&gt;</span> <span class="pre">Repo</span></code></p>
@@ -161,13 +164,18 @@
 </section>
 <section id="refs-tui">
 <h2>refs_tui<a class="headerlink" href="#refs-tui" title="Link to this heading"></a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">pygitx.refs_tui(repo,</span> <span class="pre">local=True,</span> <span class="pre">remote=False,</span> <span class="pre">tags=True,</span> <span class="pre">max_width=None)</span> <span class="pre">-&gt;</span> <span class="pre">str</span></code></p>
-<p>Render branches/tags in a jj-style table with columns for name, short oid, age, author, and summary. Width is inferred from <code class="docutils literal notranslate"><span class="pre">$COLUMNS</span></code> unless <code class="docutils literal notranslate"><span class="pre">max_width</span></code> is provided.</p>
+<p><code class="docutils literal notranslate"><span class="pre">pygitx.refs_tui(repo,</span> <span class="pre">local=True,</span> <span class="pre">remote=False,</span> <span class="pre">tags=True,</span> <span class="pre">max_width=None,</span> <span class="pre">color=&quot;auto&quot;)</span> <span class="pre">-&gt;</span> <span class="pre">str</span></code></p>
+<p>Render branches/tags in a jj-style table with columns for name, short oid, age, author, and summary. Width is inferred from <code class="docutils literal notranslate"><span class="pre">$COLUMNS</span></code> unless <code class="docutils literal notranslate"><span class="pre">max_width</span></code> is provided; set <code class="docutils literal notranslate"><span class="pre">color=&quot;auto&quot;</span></code> for ANSI colors (enabled when stdout is a TTY).</p>
 </section>
 <section id="log-tui">
 <h2>log_tui<a class="headerlink" href="#log-tui" title="Link to this heading"></a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">pygitx.log_tui(repo,</span> <span class="pre">rev=&quot;HEAD&quot;,</span> <span class="pre">max_commits=200,</span> <span class="pre">decorate=True,</span> <span class="pre">graph=True,</span> <span class="pre">max_width=None)</span> <span class="pre">-&gt;</span> <span class="pre">str</span></code></p>
+<p><code class="docutils literal notranslate"><span class="pre">pygitx.log_tui(repo,</span> <span class="pre">rev=&quot;HEAD&quot;,</span> <span class="pre">max_commits=200,</span> <span class="pre">decorate=True,</span> <span class="pre">graph=True,</span> <span class="pre">max_width=None,</span> <span class="pre">color=&quot;auto&quot;)</span> <span class="pre">-&gt;</span> <span class="pre">str</span></code></p>
 <p>Render a compact oneline log similar to <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">log</span> <span class="pre">--graph</span> <span class="pre">--oneline</span></code> with optional ASCII graph and decorations for HEAD/branches/tags. Limits to <code class="docutils literal notranslate"><span class="pre">max_commits</span></code> entries and truncates to fit <code class="docutils literal notranslate"><span class="pre">max_width</span></code> (or <code class="docutils literal notranslate"><span class="pre">$COLUMNS</span></code>).</p>
+</section>
+<section id="log-graph">
+<h2>log_graph<a class="headerlink" href="#log-graph" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">pygitx.log_graph(repo,</span> <span class="pre">refs=None,</span> <span class="pre">max_commits=400,</span> <span class="pre">decorate=True,</span> <span class="pre">max_width=None,</span> <span class="pre">color=&quot;auto&quot;)</span> <span class="pre">-&gt;</span> <span class="pre">str</span></code></p>
+<p>Render a multi-branch graph starting from the given refs (or all local branches). Shows decorations for branches, tags, and HEAD, and renders lane/merge connectors in ASCII. Enable <code class="docutils literal notranslate"><span class="pre">color=&quot;auto&quot;</span></code> for ANSI styling (enabled when stdout is a TTY).</p>
 </section>
 </section>
 
