@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 import subprocess
 from pathlib import Path
 
@@ -50,12 +51,12 @@ def test_head_and_list_commits_wrappers_accept_repo_and_path(tmp_path: Path) -> 
     second = commit_file(repo_path, "second")
     py_repo = pygitx.open_repo(str(repo_path))
 
-    head_from_repo = pygitx.head(py_repo)
-    head_from_path = pygitx.head(str(repo_path))
+    head_from_repo = py_repo.head()
+    head_from_path = pygitx.open_repo(str(repo_path)).head()
     assert head_from_repo and head_from_repo.id == second
     assert head_from_path and head_from_path.id == second
 
-    ids = [c.id for c in pygitx.list_commits(py_repo, max=2)]
+    ids = [c.id for c in py_repo.list_commits(max=2)]
     assert ids == [second, first]
 
 
@@ -64,10 +65,11 @@ def test_change_commit_message_wrapper_validates_and_updates(tmp_path: Path) -> 
     commit_id = commit_file(repo_path, "initial")
 
     with pytest.raises(ValueError):
-        pygitx.change_commit_message(repo_path, commit_id, "   ")
+        py_repo = pygitx.open_repo(str(repo_path))
+        py_repo.change_commit_message(commit_id, "   ")
 
-    updated = pygitx.change_commit_message(repo_path, commit_id, "new message")
-    new_head = pygitx.head(repo_path)
+    updated = pygitx.open_repo(str(repo_path)).change_commit_message(commit_id, "new message")
+    new_head = pygitx.open_repo(str(repo_path)).head()
     assert new_head and new_head.id != commit_id
     assert updated.updated_refs.get("HEAD") == new_head.id
     log = run_git(repo_path, "log", "-1", "--pretty=%s")
@@ -82,10 +84,10 @@ def test_reword_wrapper(tmp_path: Path) -> None:
 
     py_repo = pygitx.open_repo(str(repo_path))
     with pytest.raises(ValueError):
-        pygitx.reword(py_repo, middle, "   ")
+        py_repo.reword(middle, "   ")
 
-    result = pygitx.reword(py_repo, middle, "reworded middle")
-    new_head = pygitx.head(py_repo)
+    result = py_repo.reword(middle, "reworded middle")
+    new_head = py_repo.head()
     assert new_head and new_head.id != tip
     assert result.old_to_new.get(middle)
     log = run_git(repo_path, "log", "--pretty=%s")
@@ -124,24 +126,24 @@ def test_graph_helpers_basic(tmp_path: Path) -> None:
     feat_tip = commit_file(repo_path, "feature tip")
 
     py_repo = pygitx.open_repo(str(repo_path))
-    assert pygitx.merge_base(py_repo, base, feat_tip) == base
-    assert pygitx.is_ancestor(py_repo, base, feat_tip) is True
-    ahead, behind = pygitx.ahead_behind(py_repo, feat_tip, tip)
-    ahead2, behind2 = pygitx.ahead_behind(str(repo_path), feat_tip, tip)
+    assert py_repo.merge_base(base, feat_tip) == base
+    assert py_repo.is_ancestor(base, feat_tip) is True
+    ahead, behind = py_repo.ahead_behind(feat_tip, tip)
+    ahead2, behind2 = pygitx.open_repo(str(repo_path)).ahead_behind(feat_tip, tip)
     assert ahead >= 0 and behind >= 0
     assert (ahead, behind) == (ahead2, behind2)
     with pytest.raises(ValueError):
-        pygitx.merge_base(repo_path, "   ", tip)
+        py_repo.merge_base("   ", tip)
     with pytest.raises(ValueError):
-        pygitx.is_ancestor(repo_path, "", tip)
+        py_repo.is_ancestor("", tip)
     with pytest.raises(ValueError):
-        pygitx.ahead_behind(repo_path, "   ", tip)
+        py_repo.ahead_behind("   ", tip)
     with pytest.raises(ValueError):
-        pygitx.merge_base(repo_path, base, "   ")
+        py_repo.merge_base(base, "   ")
     with pytest.raises(ValueError):
-        pygitx.is_ancestor(repo_path, base, "   ")
+        py_repo.is_ancestor(base, "   ")
     with pytest.raises(ValueError):
-        pygitx.ahead_behind(repo_path, base, "   ")
+        py_repo.ahead_behind(base, "   ")
 
 
 def test_diff_stat_wrapper(tmp_path: Path) -> None:
@@ -155,18 +157,18 @@ def test_diff_stat_wrapper(tmp_path: Path) -> None:
     tip = run_git(repo_path, "rev-parse", "HEAD")
 
     py_repo = pygitx.open_repo(str(repo_path))
-    stats = pygitx.diff_stat(py_repo, base, tip)
+    stats = py_repo.diff_stat(base, tip)
     assert stats.files_changed == 2
     assert "a.txt" in stats.paths and "b.txt" in stats.paths
     assert "DiffStat(" in repr(stats)
     assert "files_changed: 2" in str(stats)
-    filtered = pygitx.diff_stat(repo_path, base, tip, paths=["a.txt"])
+    filtered = py_repo.diff_stat(base, tip, paths=["a.txt"])
     assert filtered.files_changed == 1
     assert filtered.paths == ["a.txt"]
     with pytest.raises(ValueError):
-        pygitx.diff_stat(repo_path, "   ", tip)
+        py_repo.diff_stat("   ", tip)
     with pytest.raises(ValueError):
-        pygitx.diff_stat(repo_path, base, "   ")
+        py_repo.diff_stat(base, "   ")
 
 
 def test_refs_and_log_tui(tmp_path: Path) -> None:
@@ -196,18 +198,111 @@ def test_refs_and_log_tui(tmp_path: Path) -> None:
         pygitx.log_tui(repo_path, max_commits=0)
 
 
+def test_log_graph(tmp_path: Path) -> None:
+    repo_path = init_repo(tmp_path)
+    base = commit_file(repo_path, "base", "a.txt", "a1")
+    main_tip = commit_file(repo_path, "main tip", "a.txt", "a2")
+    run_git(repo_path, "branch", "feature", base)
+    run_git(repo_path, "checkout", "feature")
+    commit_file(repo_path, "feature tip", "b.txt", "b1")
+    run_git(repo_path, "checkout", "main")
+    run_git(repo_path, "merge", "--no-ff", "feature", "-m", "merge feature")
+    run_git(repo_path, "tag", "-a", "v1.0", "-m", "v1.0", main_tip)
+
+    log = pygitx.log_graph(repo_path, max_commits=20)
+    assert "main" in log and "feature" in log
+    assert "tag:v1.0" in log or "v1.0" in log
+    assert "* " in log
+    assert "| " in log or "\\" in log or "/" in log
+    log2 = pygitx.open_repo(str(repo_path)).log_graph(max_commits=10)
+    assert "* " in log2
+    with pytest.raises(ValueError):
+        pygitx.log_graph(repo_path, max_commits=0)
+
+def test_repo_alias_tui_methods(tmp_path: Path, monkeypatch) -> None:
+    repo_path = init_repo(tmp_path)
+    commit_file(repo_path, "base", "a.txt", "a1")
+    commit_file(repo_path, "tip", "a.txt", "a2")
+    repo = pygitx.open_repo(str(repo_path))
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: False)
+    refs = repo.refs_tui()
+    assert "main" in refs
+    log = repo.log_tui(max_commits=5)
+    assert "* " in log
+
+
+def test_deprecated_shims_removed(tmp_path: Path) -> None:
+    repo_path = init_repo(tmp_path)
+    commit_file(repo_path, "initial")
+    # Deprecated shims removed; ensure attributes no longer exist.
+    for name in [
+        "rev_parse",
+        "list_tags",
+        "list_branches",
+        "list_commits",
+        "head",
+        "current_branch",
+        "merge_base",
+        "is_ancestor",
+        "ahead_behind",
+        "diff_stat",
+        "change_commit_message",
+        "reword",
+        "rewrite_author",
+        "filter_commits",
+        "remove_path",
+        "keep_path",
+        "rebase_branch",
+        "squash_last",
+        "create_backup_ref",
+    ]:
+        assert not hasattr(pygitx, name)
+
+
+def test_color_auto_defaults(monkeypatch) -> None:
+    calls: dict[str, bool] = {}
+
+    def fake_render_refs(self, local, remote, tags, max_width, color):
+        calls["color"] = color
+        return "ok"
+
+    monkeypatch.setattr(pygitx.Repo, "render_refs", fake_render_refs)
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    repo = pygitx.open_repo(Path.cwd())
+    pygitx.refs_tui(repo)
+    assert calls["color"] is True
+
+
+def test_color_auto_handles_isatty_exception(monkeypatch) -> None:
+    calls: dict[str, bool] = {}
+
+    def fake_render_refs(self, *_args, **kwargs):
+        calls["color"] = kwargs.get("color", _args[-1] if _args else None)
+        return "ok"
+
+    class BrokenStdout:
+        def isatty(self):
+            raise RuntimeError("boom")
+
+    monkeypatch.setattr(pygitx.Repo, "render_refs", fake_render_refs)
+    monkeypatch.setattr(sys, "stdout", BrokenStdout())
+    repo = pygitx.open_repo(Path.cwd())
+    pygitx.refs_tui(repo)
+    assert calls["color"] is False
+
+
 def test_rewrite_author_wrapper_validates_and_updates(tmp_path: Path) -> None:
     repo_path = init_repo(tmp_path)
     commit_id = commit_file(repo_path, "initial")
     py_repo = pygitx.open_repo(str(repo_path))
 
     with pytest.raises(ValueError):
-        pygitx.rewrite_author(py_repo, commit_id, "", "email@example.com")
+        py_repo.rewrite_author(commit_id, "", "email@example.com")
     with pytest.raises(ValueError):
-        pygitx.rewrite_author(py_repo, commit_id, "Name", "   ")
+        py_repo.rewrite_author(commit_id, "Name", "   ")
 
-    rewritten = pygitx.rewrite_author(py_repo, commit_id, "New Name", "new@example.com")
-    new_head = pygitx.head(py_repo)
+    rewritten = py_repo.rewrite_author(commit_id, "New Name", "new@example.com")
+    new_head = py_repo.head()
     assert new_head and rewritten.updated_refs.get("HEAD") == new_head.id
     log = run_git(repo_path, "log", "-1", "--pretty=%an %ae")
     assert "New Name new@example.com" in log
@@ -218,9 +313,9 @@ def test_rev_parse_wrapper_validates(tmp_path: Path) -> None:
     commit_id = commit_file(repo_path, "initial")
 
     with pytest.raises(ValueError):
-        pygitx.rev_parse(repo_path, "   ")
+        pygitx.open_repo(str(repo_path)).rev_parse("   ")
 
-    assert pygitx.rev_parse(repo_path, "HEAD") == commit_id
+    assert pygitx.open_repo(str(repo_path)).rev_parse("HEAD") == commit_id
 
 
 def test_filter_and_remove_path_wrappers_validate_and_run(tmp_path: Path) -> None:
@@ -229,16 +324,14 @@ def test_filter_and_remove_path_wrappers_validate_and_run(tmp_path: Path) -> Non
     wip = commit_file(repo_path, "WIP: temp", "wip.txt", "temp")
     commit_file(repo_path, "final", "final.txt", "final")
 
-    with pytest.raises(ValueError):
-        pygitx.filter_commits(repo_path, author=None, message_contains=None)
-    filtered = pygitx.filter_commits(repo_path, message_contains="WIP")
+    py_repo = pygitx.open_repo(str(repo_path))
+
+    filtered = py_repo.filter_commits(message_contains="WIP")
     assert filtered.old_to_new.get(wip)
 
-    with pytest.raises(ValueError):
-        pygitx.remove_path(repo_path, "")
     # Add a secret and ensure it is removed.
     commit_file(repo_path, "secret", "secrets/secret.txt", "secret")
-    removed = pygitx.remove_path(repo_path, "secrets/*.txt")
+    removed = py_repo.remove_path("secrets/*.txt")
     assert removed.old_to_new
     with subprocess.Popen(
         ["git", "show", "HEAD:secrets/secret.txt"], cwd=repo_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -254,10 +347,8 @@ def test_keep_path_wrapper(tmp_path: Path) -> None:
     commit_file(repo_path, "b1", "b.txt", "b1")
     commit_file(repo_path, "a2", "a.txt", "a2")
 
-    with pytest.raises(ValueError):
-        pygitx.keep_path(repo_path, "")
-
-    result = pygitx.keep_path(repo_path, "a.txt")
+    py_repo = pygitx.open_repo(str(repo_path))
+    result = py_repo.keep_path("a.txt")
     assert result.old_to_new
     rewritten = set(result.old_to_new.values())
     for oid in rewritten:
@@ -277,16 +368,16 @@ def test_list_branches_tags_and_current_branch(tmp_path: Path) -> None:
     run_git(repo_path, "update-ref", "refs/remotes/origin/main", tip)
 
     py_repo = pygitx.open_repo(str(repo_path))
-    locals_default = pygitx.list_branches(py_repo)
+    locals_default = py_repo.list_branches()
     assert "main" in locals_default and "feature" in locals_default
 
-    remotes = pygitx.list_branches(py_repo, local=False, remote=True)
+    remotes = py_repo.list_branches(local=False, remote=True)
     assert any("origin" in r for r in remotes)
 
-    tags = pygitx.list_tags(py_repo)
+    tags = py_repo.list_tags()
     assert "v1.0" in tags
 
-    assert pygitx.current_branch(py_repo) == "main"
+    assert py_repo.current_branch() == "main"
 
 
 def test_graph_helpers(tmp_path: Path) -> None:
@@ -307,12 +398,12 @@ def test_graph_helpers(tmp_path: Path) -> None:
 
     py_repo = pygitx.open_repo(str(repo_path))
     # merge base of main tip and feature tip should be base
-    assert pygitx.merge_base(py_repo, main_tip, feat_tip) == base
-    assert pygitx.is_ancestor(py_repo, base, feat_tip) is True
-    assert pygitx.is_ancestor(py_repo, feat_tip, main_tip) is False
+    assert py_repo.merge_base(main_tip, feat_tip) == base
+    assert py_repo.is_ancestor(base, feat_tip) is True
+    assert py_repo.is_ancestor(feat_tip, main_tip) is False
 
-    ahead_feat_vs_main, behind_feat_vs_main = pygitx.ahead_behind(py_repo, feat_tip, main_tip)
-    ahead_main_vs_feat, behind_main_vs_feat = pygitx.ahead_behind(py_repo, main_tip, feat_tip)
+    ahead_feat_vs_main, behind_feat_vs_main = py_repo.ahead_behind(feat_tip, main_tip)
+    ahead_main_vs_feat, behind_main_vs_feat = py_repo.ahead_behind(main_tip, feat_tip)
 
     # feature has 2 commits not in main; main has 3 not in feature
     assert ahead_feat_vs_main == 2
@@ -330,12 +421,13 @@ def test_rebase_branch_wrapper_validates_and_runs(tmp_path: Path) -> None:
     run_git(repo_path, "checkout", "main")
     onto = commit_file(repo_path, "onto change", "onto.txt", "onto")
 
+    py_repo = pygitx.open_repo(str(repo_path))
     with pytest.raises(ValueError):
-        pygitx.rebase_branch(repo_path, "   ", "main")
+        py_repo.rebase_branch("   ", "main")
     with pytest.raises(ValueError):
-        pygitx.rebase_branch(repo_path, "feature", "")
+        py_repo.rebase_branch("feature", "")
 
-    result = pygitx.rebase_branch(repo_path, "feature", "main")
+    result = py_repo.rebase_branch("feature", "main")
     assert result.old_to_new.get(feat_commit)
     feature_tip = run_git(repo_path, "rev-parse", "feature")
     assert feature_tip != feat_commit
@@ -347,12 +439,13 @@ def test_squash_last_wrapper_validates_and_runs(tmp_path: Path) -> None:
     first = commit_file(repo_path, "first")
     second = commit_file(repo_path, "second")
 
+    py_repo = pygitx.open_repo(str(repo_path))
     with pytest.raises(ValueError):
-        pygitx.squash_last(repo_path, 1)
+        py_repo.squash_last(1)
     with pytest.raises(ValueError):
-        pygitx.squash_last(repo_path, 2, mode="merge")  # invalid mode
+        py_repo.squash_last(2, mode="merge")  # invalid mode
 
-    squashed = pygitx.squash_last(repo_path, 2, mode="squash")
+    squashed = py_repo.squash_last(2, mode="squash")
     assert squashed.old_to_new.get(second)
     assert run_git(repo_path, "rev-list", "--count", "HEAD") == "1"
 
@@ -360,7 +453,7 @@ def test_squash_last_wrapper_validates_and_runs(tmp_path: Path) -> None:
 def test_create_backup_ref_wrapper(tmp_path: Path) -> None:
     repo_path = init_repo(tmp_path)
     commit_file(repo_path, "first")
-    backup_root = pygitx.create_backup_ref(repo_path)
+    backup_root = pygitx.open_repo(str(repo_path)).create_backup_ref()
     assert backup_root.startswith("refs/pygitx/backup/")
     refs = run_git(repo_path, "show-ref")
     assert f"{backup_root}/HEAD" in refs

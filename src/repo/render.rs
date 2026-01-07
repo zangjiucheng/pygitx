@@ -16,6 +16,38 @@ const REF_SEPARATORS: usize = 4;
 // Character used for truncation indicator
 const ELLIPSIS: char = '…';
 
+struct Colors {
+    enabled: bool,
+}
+
+impl Colors {
+    fn apply(&self, code: &str, text: &str) -> String {
+        if self.enabled {
+            format!("\x1b[{code}m{text}\x1b[0m")
+        } else {
+            text.to_string()
+        }
+    }
+    fn cyan(&self, text: &str) -> String {
+        self.apply("1;36", text)
+    }
+    fn green(&self, text: &str) -> String {
+        self.apply("32", text)
+    }
+    fn blue(&self, text: &str) -> String {
+        self.apply("34", text)
+    }
+    fn yellow(&self, text: &str) -> String {
+        self.apply("33", text)
+    }
+    fn magenta(&self, text: &str) -> String {
+        self.apply("35", text)
+    }
+    fn dim(&self, text: &str) -> String {
+        self.apply("2", text)
+    }
+}
+
 struct RefRow {
     name: String,
     oid7: String,
@@ -30,6 +62,7 @@ pub(super) fn render_refs(
     remote: bool,
     tags: bool,
     max_width: Option<usize>,
+    color: bool,
 ) -> PyResult<String> {
     if !local && !remote && !tags {
         return Ok(String::new());
@@ -56,15 +89,22 @@ pub(super) fn render_refs(
     let effective_width = if width < min_width { min_width } else { width };
     let summary_w = effective_width - fixed_columns_width;
 
+    let colors = Colors { enabled: color };
     let mut out = String::new();
     for row in rows {
+        // Truncate first, then apply colors to avoid width calculation issues
+        let name_truncated = truncate(&row.name, REF_NAME_WIDTH);
+        let age_truncated = truncate(&row.age, REF_AGE_WIDTH);
+        let author_truncated = truncate(&row.author, REF_AUTHOR_WIDTH);
+        let summary_truncated = truncate(&row.summary, summary_w);
+        
         let line = format!(
             "{:<name_w$} {:<oid_w$} {:<age_w$} {:<author_w$} {}",
-            truncate(&row.name, REF_NAME_WIDTH),
-            row.oid7,
-            truncate(&row.age, REF_AGE_WIDTH),
-            truncate(&row.author, REF_AUTHOR_WIDTH),
-            truncate(&row.summary, summary_w),
+            colors.green(&name_truncated),
+            colors.cyan(&row.oid7),
+            colors.blue(&age_truncated),
+            colors.yellow(&author_truncated),
+            summary_truncated,
             name_w = REF_NAME_WIDTH,
             oid_w = REF_OID_WIDTH,
             age_w = REF_AGE_WIDTH,
@@ -83,6 +123,7 @@ pub(super) fn render_log(
     decorate: bool,
     graph: bool,
     max_width: Option<usize>,
+    color: bool,
 ) -> PyResult<String> {
     let width = terminal_width(max_width);
     let mut revwalk = repo.revwalk().map_err(|err| py_git_err("revwalk", err))?;
@@ -96,6 +137,7 @@ pub(super) fn render_log(
     let decorations = collect_decorations(repo)?;
     let head_target = repo.head().ok().and_then(|h| h.target());
 
+    let colors = Colors { enabled: color };
     let mut lanes: Vec<Oid> = Vec::new();
     let mut lines = Vec::new();
 
@@ -117,10 +159,15 @@ pub(super) fn render_log(
             }
         };
 
-        let graph_prefix = if graph {
+        let raw_prefix = if graph {
             render_graph_prefix(lanes.len(), lane_idx, parents.len())
         } else {
             String::new()
+        };
+        let graph_prefix = if graph {
+            colors.dim(&raw_prefix)
+        } else {
+            raw_prefix.clone()
         };
 
         let mut deco: Vec<String> = decorations
@@ -131,13 +178,19 @@ pub(super) fn render_log(
             deco.push("HEAD".to_string());
         }
         deco.sort();
-        let deco_str = if decorate && !deco.is_empty() {
+        let deco_raw = if decorate && !deco.is_empty() {
             format!("[{}]", deco.join(", "))
         } else {
             String::new()
         };
+        let deco_str = if !deco_raw.is_empty() {
+            colors.magenta(&deco_raw)
+        } else {
+            String::new()
+        };
 
-        let oid7 = oid.to_string()[0..7].to_string();
+        let oid7_raw = oid.to_string()[0..7].to_string();
+        let oid7 = colors.cyan(&oid7_raw);
         let mut summary = commit
             .summary()
             .unwrap_or("<no message>")
@@ -147,7 +200,7 @@ pub(super) fn render_log(
             .to_string();
         let available = {
             let base = width
-                .saturating_sub(graph_prefix.len() + 1 + oid7.len() + 1 + deco_str.len() + 1);
+                .saturating_sub(raw_prefix.len() + 1 + oid7_raw.len() + 1 + deco_raw.len() + 1);
             std::cmp::max(base, 1)
         };
         summary = truncate(&summary, available);
@@ -175,6 +228,142 @@ pub(super) fn render_log(
         // Deduplicate lanes keeping order.
         let mut seen = HashSet::new();
         lanes.retain(|o| seen.insert(*o));
+    }
+
+    Ok(lines.join("\n"))
+}
+
+pub(super) fn render_log_graph(
+    repo: &Repository,
+    refs: Option<Vec<String>>,
+    max_commits: usize,
+    decorate: bool,
+    max_width: Option<usize>,
+    color: bool,
+) -> PyResult<String> {
+    let width = terminal_width(max_width);
+    let mut revwalk = repo.revwalk().map_err(|err| py_git_err("revwalk", err))?;
+
+    let mut pushed = HashSet::new();
+    if let Some(refs) = refs {
+        for spec in refs {
+            if let Ok(obj) = repo.revparse_single(&spec) {
+                let oid = obj.id();
+                if pushed.insert(oid) {
+                    revwalk
+                        .push(oid)
+                        .map_err(|err| py_git_err("revwalk push", err))?;
+                }
+            }
+        }
+    } else {
+        let branches = repo
+            .branches(Some(BranchType::Local))
+            .map_err(|err| py_git_err("list branches", err))?;
+        for branch in branches {
+            let (branch, _) = branch.map_err(|err| py_git_err("branch", err))?;
+            if let Some(target) = branch.get().target() {
+                if pushed.insert(target) {
+                    revwalk
+                        .push(target)
+                        .map_err(|err| py_git_err("revwalk push", err))?;
+                }
+            }
+        }
+    }
+
+    revwalk
+        .set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::TIME)
+        .map_err(|err| py_git_err("revwalk sort", err))?;
+
+    let decorations = collect_decorations(repo)?;
+    let head_target = repo.head().ok().and_then(|h| h.target());
+
+    let colors = Colors { enabled: color };
+    let mut seen = HashSet::new();
+    let mut lanes: Vec<Oid> = Vec::new();
+    let mut lines = Vec::new();
+
+    for oid_res in revwalk {
+        let oid = oid_res.map_err(|err| py_git_err("revwalk oid", err))?;
+        if !seen.insert(oid) {
+            continue;
+        }
+        if lines.len() >= max_commits {
+            break;
+        }
+        let commit = repo
+            .find_commit(oid)
+            .map_err(|err| py_git_err("find commit", err))?;
+        let parents: Vec<Oid> = commit.parents().map(|p| p.id()).collect();
+
+        let lane_idx = match lanes.iter().position(|o| *o == oid) {
+            Some(i) => i,
+            None => {
+                lanes.push(oid);
+                lanes.len() - 1
+            }
+        };
+
+        let raw_prefix = render_graph_prefix_fixed(&lanes, lane_idx);
+        let graph_prefix = colors.dim(&raw_prefix);
+
+        let mut deco: Vec<String> = decorations
+            .get(&oid)
+            .cloned()
+            .unwrap_or_else(Vec::new);
+        if Some(oid) == head_target {
+            deco.push("HEAD".to_string());
+        }
+        deco.sort();
+        let deco_raw = if decorate && !deco.is_empty() {
+            format!("[{}]", deco.join(", "))
+        } else {
+            String::new()
+        };
+        let deco_str = if !deco_raw.is_empty() {
+            colors.magenta(&deco_raw)
+        } else {
+            String::new()
+        };
+
+        let oid7_raw = oid.to_string()[0..7].to_string();
+        let oid7 = colors.cyan(&oid7_raw);
+        let mut summary = commit
+            .summary()
+            .unwrap_or("<no message>")
+            .lines()
+            .next()
+            .unwrap_or("<no message>")
+            .to_string();
+        let available = width
+            .saturating_sub(raw_prefix.len() + 1 + oid7_raw.len() + 1 + deco_raw.len() + 1);
+        summary = truncate(&summary, available);
+
+        let line = if deco_str.is_empty() {
+            format!("{}{} {}", graph_prefix, oid7, summary).trim_end().to_string()
+        } else {
+            format!("{}{} {} {}", graph_prefix, oid7, deco_str, summary)
+                .trim_end()
+                .to_string()
+        };
+        lines.push(line);
+
+        // Lane updates.
+        if parents.is_empty() {
+            lanes.remove(lane_idx);
+        } else {
+            lanes[lane_idx] = parents[0];
+            for (offset, parent) in parents.iter().enumerate().skip(1) {
+                lanes.insert(lane_idx + offset, *parent);
+            }
+        }
+        dedup_lanes(&mut lanes);
+
+        if parents.len() > 1 && !lanes.is_empty() {
+            let connector = colors.dim(&render_merge_connector(&lanes, lane_idx));
+            lines.push(connector);
+        }
     }
 
     Ok(lines.join("\n"))
@@ -310,6 +499,44 @@ fn render_graph_prefix(lanes: usize, current_idx: usize, parent_count: usize) ->
         out.push('|');
     }
     out
+}
+
+fn render_graph_prefix_fixed(lanes: &[Oid], current_idx: usize) -> String {
+    let mut out = String::new();
+    for (idx, _lane_oid) in lanes.iter().enumerate() {
+        if idx == current_idx {
+            out.push_str("* ");
+        } else {
+            out.push_str("| ");
+        }
+    }
+    out
+}
+
+fn render_merge_connector(lanes: &[Oid], current_idx: usize) -> String {
+    let mut out = String::new();
+    for (idx, _lane_oid) in lanes.iter().enumerate() {
+        if idx == current_idx {
+            out.push_str("|\\");
+        } else if idx == current_idx + 1 {
+            out.push_str("/ ");
+        } else {
+            out.push_str("| ");
+        }
+    }
+    out.trim_end().to_string()
+}
+
+fn dedup_lanes(lanes: &mut Vec<Oid>) {
+    let mut seen = HashSet::new();
+    let mut i = 0;
+    while i < lanes.len() {
+        if !seen.insert(lanes[i]) {
+            lanes.remove(i);
+        } else {
+            i += 1;
+        }
+    }
 }
 
 fn truncate(s: &str, width: usize) -> String {

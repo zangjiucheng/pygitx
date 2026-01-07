@@ -693,16 +693,56 @@ fn render_refs_and_log_tui() {
     drop(obj);
 
     let py_repo = PyRepo { repo };
-    let refs = py_repo.render_refs(true, false, true, Some(120)).unwrap();
+    let refs = py_repo.render_refs(true, false, true, Some(120), false).unwrap();
     assert!(refs.contains("main"));
     assert!(refs.contains("feature"));
     assert!(refs.contains("tag:v1.0"));
 
     let log = py_repo
-        .render_log("HEAD", 20, true, true, Some(120))
+        .render_log("HEAD", 20, true, true, Some(120), false)
         .unwrap();
     assert!(log.contains('*'));
     assert!(log.contains("|") || log.contains("\\") || log.contains("/"));
+    assert!(log.contains(&merge_tip.to_string()[0..7]));
+}
+
+#[test]
+fn render_log_graph_multi_branch() {
+    init_python();
+    let dir = tempdir().unwrap();
+    let repo = Repository::init(dir.path()).unwrap();
+    // main branch commits
+    let base = create_commit_on_ref_with_path(&repo, "HEAD", &[], "a.txt", "base", "a1");
+    let main_tip = create_commit_on_ref_with_path(&repo, "HEAD", &[base], "a.txt", "main tip", "a2");
+    // feature branch from base
+    let feature_tip = {
+        let base_commit = repo.find_commit(base).unwrap();
+        repo.branch("feature", &base_commit, false).unwrap();
+        create_commit_on_ref_with_path(&repo, "refs/heads/feature", &[base], "b.txt", "feature tip", "b1")
+    };
+    // Merge feature into main
+    let merge_tip = create_commit_on_ref_with_path(
+        &repo,
+        "HEAD",
+        &[main_tip, feature_tip],
+        "c.txt",
+        "merge feature",
+        "c1",
+    );
+    // Tag merge tip
+    let obj = repo.find_object(merge_tip, None).unwrap();
+    repo.tag_lightweight("v1.0", &obj, false).unwrap();
+    drop(obj);
+
+    let py_repo = PyRepo { repo };
+    let log = py_repo
+        .render_log_graph(None, 50, true, Some(200), false)
+        .unwrap();
+    assert!(log.contains("main"));
+    assert!(log.contains("feature"));
+    assert!(log.contains("tag:v1.0"));
+    assert!(log.contains("* "));
+    assert!(log.contains("| ") || log.contains("\\") || log.contains("/"));
     assert!(log.contains(&merge_tip.to_string()[0..7]));
 }
 
