@@ -204,7 +204,7 @@ def test_log_graph(tmp_path: Path) -> None:
     main_tip = commit_file(repo_path, "main tip", "a.txt", "a2")
     run_git(repo_path, "branch", "feature", base)
     run_git(repo_path, "checkout", "feature")
-    feature_tip = commit_file(repo_path, "feature tip", "b.txt", "b1")
+    commit_file(repo_path, "feature tip", "b.txt", "b1")
     run_git(repo_path, "checkout", "main")
     run_git(repo_path, "merge", "--no-ff", "feature", "-m", "merge feature")
     run_git(repo_path, "tag", "-a", "v1.0", "-m", "v1.0", main_tip)
@@ -231,7 +231,7 @@ def test_repo_alias_tui_methods(tmp_path: Path, monkeypatch) -> None:
     assert "* " in log
 
 
-def test_deprecated_shims_warn(tmp_path: Path) -> None:
+def test_deprecated_shims_removed(tmp_path: Path) -> None:
     repo_path = init_repo(tmp_path)
     commit_file(repo_path, "initial")
     # Deprecated shims removed; ensure attributes no longer exist.
