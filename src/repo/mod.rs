@@ -319,23 +319,6 @@ impl PyRepo {
         render_log_graph(&self.repo, refs, max_commits, decorate, max_width, color)
     }
 
-    /// Alias for render_log_graph.
-    #[pyo3(
-        text_signature = "($self, refs=None, max_commits=400, decorate=True, max_width=None, color=True)",
-        signature = (refs = None, max_commits = 400, decorate = true, max_width = None, color = true),
-        name = "log_graph"
-    )]
-    pub fn log_graph(
-        &self,
-        refs: Option<Vec<String>>,
-        max_commits: usize,
-        decorate: bool,
-        max_width: Option<usize>,
-        color: bool,
-    ) -> PyResult<String> {
-        render_log_graph(&self.repo, refs, max_commits, decorate, max_width, color)
-    }
-
     /// Resolve a revision spec to an object id (hex).
     ///
     /// Args:
