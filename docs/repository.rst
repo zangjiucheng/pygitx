@@ -88,18 +88,18 @@ Return diff statistics between two revisions. ``paths`` can limit the diff to sp
 
 refs_tui
 --------
-``pygitx.refs_tui(repo, local=True, remote=False, tags=True, max_width=None, color=True) -> str``
+``pygitx.refs_tui(repo, local=True, remote=False, tags=True, max_width=None, color="auto") -> str``
 
-Render branches/tags in a jj-style table with columns for name, short oid, age, author, and summary. Width is inferred from ``$COLUMNS`` unless ``max_width`` is provided; set ``color=True`` for ANSI colors.
+Render branches/tags in a jj-style table with columns for name, short oid, age, author, and summary. Width is inferred from ``$COLUMNS`` unless ``max_width`` is provided; set ``color="auto"`` for ANSI colors (enabled when stdout is a TTY).
 
 log_tui
 -------
-``pygitx.log_tui(repo, rev="HEAD", max_commits=200, decorate=True, graph=True, max_width=None, color=True) -> str``
+``pygitx.log_tui(repo, rev="HEAD", max_commits=200, decorate=True, graph=True, max_width=None, color="auto") -> str``
 
 Render a compact oneline log similar to ``git log --graph --oneline`` with optional ASCII graph and decorations for HEAD/branches/tags. Limits to ``max_commits`` entries and truncates to fit ``max_width`` (or ``$COLUMNS``).
 
 log_graph
 ---------
-``pygitx.log_graph(repo, refs=None, max_commits=400, decorate=True, max_width=None, color=True) -> str``
+``pygitx.log_graph(repo, refs=None, max_commits=400, decorate=True, max_width=None, color="auto") -> str``
 
-Render a multi-branch graph starting from the given refs (or all local branches). Shows decorations for branches, tags, and HEAD, and renders lane/merge connectors in ASCII. Enable ``color=True`` for ANSI styling.
+Render a multi-branch graph starting from the given refs (or all local branches). Shows decorations for branches, tags, and HEAD, and renders lane/merge connectors in ASCII. Enable ``color="auto"`` for ANSI styling (enabled when stdout is a TTY).

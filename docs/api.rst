@@ -120,17 +120,18 @@ Classes
 
       Return a structured summary (also used by ``__str__``/``__repr__``).
 
-.. py:method:: render_refs(local: bool = True, remote: bool = False, tags: bool = True, max_width: int | None = None, color: bool = True) -> str
+   .. py:method:: render_refs(local: bool = True, remote: bool = False, tags: bool = True, max_width: int | None = None, color: bool = False) -> str
 
-   Render branches/tags in a jj-style table (NAME, OID7, AGE, AUTHOR, SUMMARY), width-aware; enable ``color`` for ANSI styling.
+      Render branches/tags in a jj-style table (NAME, OID7, AGE, AUTHOR, SUMMARY), width-aware; enable ``color`` for ANSI styling.
 
-   .. py:method:: render_log(rev: str, max_commits: int = 200, decorate: bool = True, graph: bool = True, max_width: int | None = None, color: bool = True) -> str
+   .. py:method:: render_log(rev: str, max_commits: int = 200, decorate: bool = True, graph: bool = True, max_width: int | None = None, color: bool = False) -> str
 
       Render a compact log like ``git log --graph --oneline`` with optional decorations and ASCII graph; ``color`` toggles ANSI output.
 
    .. py:method:: log_graph(refs: list[str] | None = None, max_commits: int = 400, decorate: bool = True, max_width: int | None = None, color: bool = True) -> str
 
       Render a multi-branch graph starting from the given refs (or all local branches) with decorations; ``color`` toggles ANSI output. (Alias of ``render_log_graph``).
+
    .. py:method:: diff_stat(a_spec: str, b_spec: str, paths: list[str] | None = None) -> DiffStat
 
       Compute diff statistics between two revisions (optionally limited to ``paths``).
