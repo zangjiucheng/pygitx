@@ -18,12 +18,12 @@ mod render;
 
 use backup::{collect_head_refs, create_backup_refs};
 use diff::diff_stat;
+use render::{render_log, render_log_graph, render_refs};
 use rewrite::{
     change_commit_message, filter_commits, keep_path, rebase_branch, remove_path, reword_commit,
     rewrite_author, squash_last_commits,
 };
 use summary::summarize_repo;
-use render::{render_log, render_refs};
 use util::resolve_repo_path;
 
 /// Thin wrapper around git2::Repository exposed to Python.
@@ -271,8 +271,8 @@ impl PyRepo {
 
     /// Render a TUI-style ref list (branches/tags) similar to jj bookmark list.
     #[pyo3(
-        text_signature = "($self, local=True, remote=False, tags=True, max_width=None)",
-        signature = (local = true, remote = false, tags = true, max_width = None)
+        text_signature = "($self, local=True, remote=False, tags=True, max_width=None, color=False)",
+        signature = (local = true, remote = false, tags = true, max_width = None, color = false)
     )]
     pub fn render_refs(
         &self,
@@ -280,14 +280,15 @@ impl PyRepo {
         remote: bool,
         tags: bool,
         max_width: Option<usize>,
+        color: bool,
     ) -> PyResult<String> {
-        render_refs(&self.repo, local, remote, tags, max_width)
+        render_refs(&self.repo, local, remote, tags, max_width, color)
     }
 
     /// Render a TUI-style commit log (graph/decorate) similar to jj log / git log --graph.
     #[pyo3(
-        text_signature = "($self, rev, max_commits=200, decorate=True, graph=True, max_width=None)",
-        signature = (rev, max_commits = 200, decorate = true, graph = true, max_width = None)
+        text_signature = "($self, rev, max_commits=200, decorate=True, graph=True, max_width=None, color=False)",
+        signature = (rev, max_commits = 200, decorate = true, graph = true, max_width = None, color = false)
     )]
     pub fn render_log(
         &self,
@@ -296,9 +297,43 @@ impl PyRepo {
         decorate: bool,
         graph: bool,
         max_width: Option<usize>,
+        color: bool,
     ) -> PyResult<String> {
         let start = self.resolve_spec_oid(rev)?;
-        render_log(&self.repo, start, max_commits, decorate, graph, max_width)
+        render_log(&self.repo, start, max_commits, decorate, graph, max_width, color)
+    }
+
+    /// Render a multi-branch graph starting from refs (or all local branches).
+    #[pyo3(
+        text_signature = "($self, refs=None, max_commits=400, decorate=True, max_width=None, color=False)",
+        signature = (refs = None, max_commits = 400, decorate = true, max_width = None, color = false)
+    )]
+    pub fn render_log_graph(
+        &self,
+        refs: Option<Vec<String>>,
+        max_commits: usize,
+        decorate: bool,
+        max_width: Option<usize>,
+        color: bool,
+    ) -> PyResult<String> {
+        render_log_graph(&self.repo, refs, max_commits, decorate, max_width, color)
+    }
+
+    /// Alias for render_log_graph.
+    #[pyo3(
+        text_signature = "($self, refs=None, max_commits=400, decorate=True, max_width=None, color=True)",
+        signature = (refs = None, max_commits = 400, decorate = true, max_width = None, color = true),
+        name = "log_graph"
+    )]
+    pub fn log_graph(
+        &self,
+        refs: Option<Vec<String>>,
+        max_commits: usize,
+        decorate: bool,
+        max_width: Option<usize>,
+        color: bool,
+    ) -> PyResult<String> {
+        render_log_graph(&self.repo, refs, max_commits, decorate, max_width, color)
     }
 
     /// Resolve a revision spec to an object id (hex).

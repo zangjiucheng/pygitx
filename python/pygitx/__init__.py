@@ -48,6 +48,7 @@ __all__ = [
     "diff_stat",
     "refs_tui",
     "log_tui",
+    "log_graph",
 ]
 
 
@@ -171,11 +172,12 @@ def refs_tui(
     remote: bool = False,
     tags: bool = True,
     max_width: int | None = None,
+    color: bool = True,
 ) -> str:
     """Render branches/tags in a jj-style table."""
     if not (local or remote or tags):
         raise ValueError("at least one of local, remote, or tags must be True")
-    return _ensure_repo(repo).render_refs(local, remote, tags, max_width)
+    return _ensure_repo(repo).render_refs(local, remote, tags, max_width, color)
 
 
 def log_tui(
@@ -185,13 +187,28 @@ def log_tui(
     decorate: bool = True,
     graph: bool = True,
     max_width: int | None = None,
+    color: bool = True,
 ) -> str:
     """Render a jj/git-style oneline log with optional graph/decorations."""
     if not rev.strip():
         raise ValueError("rev cannot be empty")
     if max_commits <= 0:
         raise ValueError("max_commits must be positive")
-    return _ensure_repo(repo).render_log(rev, max_commits, decorate, graph, max_width)
+    return _ensure_repo(repo).render_log(rev, max_commits, decorate, graph, max_width, color)
+
+
+def log_graph(
+    repo: Repo | str,
+    refs: list[str] | None = None,
+    max_commits: int = 400,
+    decorate: bool = True,
+    max_width: int | None = None,
+    color: bool = True,
+) -> str:
+    """Render a multi-branch graph starting from refs (or all local branches)."""
+    if max_commits <= 0:
+        raise ValueError("max_commits must be positive")
+    return _ensure_repo(repo).render_log_graph(refs, max_commits, decorate, max_width, color)
 
 
 def filter_commits(
