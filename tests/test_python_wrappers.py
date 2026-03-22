@@ -457,3 +457,29 @@ def test_create_backup_ref_wrapper(tmp_path: Path) -> None:
     assert backup_root.startswith("refs/pygitx/backup/")
     refs = run_git(repo_path, "show-ref")
     assert f"{backup_root}/HEAD" in refs
+
+
+def test_bisect_suspects_and_next(tmp_path: Path) -> None:
+    repo_path = init_repo(tmp_path)
+    good = commit_file(repo_path, "good")
+    mid = commit_file(repo_path, "mid")
+    bad = commit_file(repo_path, "bad")
+    py_repo = pygitx.open_repo(str(repo_path))
+
+    with pytest.raises(ValueError):
+        py_repo.bisect_suspects([], [bad])
+    with pytest.raises(ValueError):
+        py_repo.bisect_suspects([good], [])
+
+    suspects = py_repo.bisect_suspects([good], [bad])
+    assert len(suspects) == 2
+    assert good not in suspects
+    assert bad in suspects
+    assert mid in suspects
+
+    nxt = py_repo.bisect_next([good], [bad])
+    assert nxt == mid
+
+    # After marking `mid` as good, only `bad` remains suspect.
+    assert py_repo.bisect_suspects([good, mid], [bad]) == [bad]
+    assert py_repo.bisect_next([good, mid], [bad]) == bad

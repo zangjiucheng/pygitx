@@ -9,6 +9,7 @@ use std::collections::HashSet;
 use std::path::Path;
 
 mod backup;
+mod bisect;
 mod rewrite;
 mod summary;
 mod tree_ops;
@@ -23,6 +24,7 @@ use rewrite::{
     change_commit_message, filter_commits, keep_path, rebase_branch, remove_path, reword_commit,
     rewrite_author, squash_last_commits,
 };
+use bisect::{bisect_next_py, bisect_suspects_py};
 use summary::summarize_repo;
 use util::resolve_repo_path;
 
@@ -244,6 +246,53 @@ impl PyRepo {
         self.repo
             .graph_descendant_of(b, a)
             .map_err(|err| py_git_err("failed to check ancestry", err))
+    }
+
+    /// Return commit OIDs still under suspicion for a bisect (reachable from any
+    /// known-bad revision, excluding commits reachable from any known-good).
+    ///
+    /// This matches the set `git rev-list` uses (`bad ^good` style). Order is
+    /// the revwalk order (topological with commit time), newest-first.
+    ///
+    /// Args:
+    ///     good (list[str]): Known-good revision specs (at least one).
+    ///     bad (list[str]): Known-bad revision specs (at least one).
+    ///     first_parent_only (bool): If True, follow only first parents (mainline).
+    ///
+    /// Returns:
+    ///     list[str]: Full hex object ids for suspect commits.
+    #[pyo3(
+        text_signature = "($self, good, bad, first_parent_only=False)",
+        signature = (good, bad, first_parent_only = false)
+    )]
+    pub fn bisect_suspects(
+        &self,
+        good: Vec<String>,
+        bad: Vec<String>,
+        first_parent_only: bool,
+    ) -> PyResult<Vec<String>> {
+        bisect_suspects_py(&self.repo, good, bad, first_parent_only)
+    }
+
+    /// Pick the next commit to test: roughly the midpoint of [`bisect_suspects`].
+    ///
+    /// This is a stateless helper. After you test the returned commit, shrink the
+    /// range by appending that OID to `good` or `bad` and call again.
+    ///
+    /// Returns:
+    ///     str | None: Next commit id to checkout, or None if there are no suspects
+    ///     (empty range — e.g. inconsistent good/bad markers).
+    #[pyo3(
+        text_signature = "($self, good, bad, first_parent_only=False)",
+        signature = (good, bad, first_parent_only = false)
+    )]
+    pub fn bisect_next(
+        &self,
+        good: Vec<String>,
+        bad: Vec<String>,
+        first_parent_only: bool,
+    ) -> PyResult<Option<String>> {
+        bisect_next_py(&self.repo, good, bad, first_parent_only)
     }
 
     /// Return (ahead, behind) counts comparing two revisions.
